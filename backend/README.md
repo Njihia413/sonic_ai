@@ -6,7 +6,7 @@ This is the backend API for Sonic AI, built with FastAPI.
 
 1. Create a virtual environment:
 ```bash
-python3 -m venv venv
+python3 -m venv .venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
