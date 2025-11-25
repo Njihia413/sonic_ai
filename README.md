@@ -122,4 +122,4 @@ This tool is designed for legitimate and ethical use cases. Users are responsibl
 
 ---
 
-Built with ❤️ by Athens-AI
+Built with ❤️ by Njihia
