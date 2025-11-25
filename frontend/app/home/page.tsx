@@ -1,9 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Navbar } from '@/components/navbar';
+import { CreateVoiceModal } from '@/components/create-voice-modal';
 import { colors } from '@/lib/colors';
 
 export default function HomePage() {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <Navbar />
@@ -82,6 +86,7 @@ export default function HomePage() {
                   Generate personalized AI voices from text with customizable options.
                 </p>
                 <button
+                  onClick={() => setShowCreateModal(true)}
                   className="w-full lg:w-auto px-8 py-2.5 rounded-full text-white font-medium transition-all self-start hover:bg-transparent border-2 hover:border-2"
                   style={{ backgroundColor: colors.emeraldGreen, borderColor: colors.emeraldGreen }}
                   onMouseEnter={(e) => {
@@ -100,6 +105,8 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      <CreateVoiceModal open={showCreateModal} onOpenChange={setShowCreateModal} />
     </div>
   );
 }
