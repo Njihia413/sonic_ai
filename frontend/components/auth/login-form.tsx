@@ -18,11 +18,12 @@ interface LoginFormProps {
 
 export function LoginForm({ open, onOpenChange, onSignUpClick }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('alex.carter@gmail.com');
+  const [password, setPassword] = useState('Alex@123');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    window.location.href = '/home';
   };
 
   return (
@@ -53,9 +54,9 @@ export function LoginForm({ open, onOpenChange, onSignUpClick }: LoginFormProps)
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="alex.carter@email.com"
+                placeholder="alex.carter@gmail.com"
                 className="w-full h-14 bg-transparent border border-gray-400 dark:border-gray-600 rounded-full pl-14 pr-4 placeholder:text-xs placeholder:tracking-wider focus:outline-none transition-colors text-black dark:text-white"
-                style={{ outlineColor: colors.emeraldGreen }}
+                style={{ '--tw-ring-color': colors.emeraldGreen } as React.CSSProperties}
                 onFocus={(e) => e.target.style.borderColor = colors.emeraldGreen}
                 onBlur={(e) => e.target.style.borderColor = ''}
               />
@@ -70,7 +71,7 @@ export function LoginForm({ open, onOpenChange, onSignUpClick }: LoginFormProps)
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black dark:text-white" />
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
@@ -78,7 +79,7 @@ export function LoginForm({ open, onOpenChange, onSignUpClick }: LoginFormProps)
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="**********"
                 className="w-full h-14 bg-transparent border border-gray-400 dark:border-gray-600 rounded-full pl-14 pr-14 placeholder:text-xs placeholder:tracking-wider focus:outline-none transition-colors text-black dark:text-white"
-                style={{ outlineColor: colors.emeraldGreen }}
+                style={{ '--tw-ring-color': colors.emeraldGreen } as React.CSSProperties}
                 onFocus={(e) => e.target.style.borderColor = colors.emeraldGreen}
                 onBlur={(e) => e.target.style.borderColor = ''}
               />
