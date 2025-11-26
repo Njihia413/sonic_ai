@@ -110,7 +110,7 @@ export default function ChatPage() {
 
     const responseText = "Sure, I'll help you with that. Here's the audio response you requested. You can play it or download it for later use.";
 
-    const dummyAudioUrl = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGmm98d2QQAoUYLPp66hVFApGnuDyvmwhBSeBy+/biy8HGWi68d2RQAoUX7Pp66hVFApGnuDyvmwhBSeBy+/biy8HGGm88d2RQAoUXrPp66hVFApGnuDyvmwhBSaCzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBQ==';
+    const dummyAudioUrl = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGmm98d2QQAoUYLPp66hVFApGnuDyvmwhBSeBy+/biy8HGWi68d2RQAoUX7Pp66hVFApGnuDyvmwhBSeBy+/biy8HGGm88d2RQAoUXrPp66hVFApGnuDyvmwhBSaCzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBQ==';
 
     const assistantMessageIndex = messages.length + 1;
     const initialMessage = {
@@ -206,14 +206,7 @@ export default function ChatPage() {
                         </button>
                       </div>
                     )}
-                    <div className="flex items-start gap-2 mt-2">
-                      <button
-                        onClick={handleAttachmentClick}
-                        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        aria-label="Attach audio file"
-                      >
-                        <Paperclip className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                      </button>
+                    <div className="relative flex items-start mt-2">
                       <Textarea
                         ref={textareaRef}
                         value={message}
@@ -222,25 +215,38 @@ export default function ChatPage() {
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         placeholder="Ask me anything..."
-                        className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 bg-transparent text-black dark:text-white placeholder:text-gray-500 placeholder:text-left focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
+                        className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 pl-8 bg-transparent text-black dark:text-white placeholder:text-gray-500 placeholder:text-left focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
                       />
+                      <button
+                        onClick={handleAttachmentClick}
+                        className="absolute left-0 bottom-0 flex-shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        aria-label="Attach audio file"
+                      >
+                        <Paperclip className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                      </button>
                     </div>
                   </div>
                 </div>
                 <div className="absolute right-2 bottom-2 flex items-center gap-2">
-                  <Button
-                    onClick={handleMicrophone}
-                    size="icon"
-                    variant="ghost"
-                    className="rounded-full h-[40px] w-[40px] shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
-                    <Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleMicrophone}
+                        size="icon"
+                        className="rounded-full h-[42px] w-[42px] shrink-0 border-2 transition-all duration-300 border-gray-400 dark:border-gray-600 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                      <p>Voice input</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Button
                     onClick={isLoading || typingMessageIndex !== null ? handleStop : handleSend}
                     disabled={!isLoading && typingMessageIndex === null && !message.trim() && !audioFile}
                     size="icon"
-                    className="rounded-full h-[40px] w-[40px] shrink-0 transition-all duration-300 disabled:opacity-50"
+                    className="rounded-full h-[38px] w-[38px] shrink-0 transition-all duration-300 disabled:opacity-50"
                     style={{
                       backgroundColor: colors.emeraldGreen,
                       color: colors.white,
@@ -442,17 +448,23 @@ export default function ChatPage() {
                     </div>
                   </div>
                   <div className="absolute right-2 bottom-2 flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleMicrophone}
+                          size="icon"
+                          className="rounded-full h-[40px] w-[40px] shrink-0 border transition-all duration-300 border-gray-400 dark:border-gray-600 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                        <p>Voice input</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <Button
-                      onClick={handleMicrophone}
-                      size="icon"
-                      variant="ghost"
-                      className="rounded-full h-[40px] w-[40px] shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      <Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                    </Button>
-                    <Button
-                      onClick={isLoading ? handleStop : handleSend}
-                      disabled={!isLoading && !message.trim() && !audioFile}
+                      onClick={isLoading || typingMessageIndex !== null ? handleStop : handleSend}
+                      disabled={!isLoading && typingMessageIndex === null && !message.trim() && !audioFile}
                       size="icon"
                       className="rounded-full h-[40px] w-[40px] shrink-0 transition-all duration-300 disabled:opacity-50"
                       style={{
@@ -460,7 +472,7 @@ export default function ChatPage() {
                         color: colors.white,
                       }}
                     >
-                      {isLoading ? <Square className="w-4 h-4" fill="currentColor" /> : <ArrowUp className="w-4 h-4" />}
+                      {(isLoading || typingMessageIndex !== null) ? <Square className="w-4 h-4" fill="currentColor" /> : <ArrowUp className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
