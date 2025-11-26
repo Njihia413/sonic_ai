@@ -30,11 +30,11 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validFormats = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/ogg', 'audio/m4a'];
+      const validFormats = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/ogg', 'audio/m4a', 'audio/webm'];
       const maxSize = 10 * 1024 * 1024;
 
-      if (!validFormats.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) {
-        alert('Please upload a valid audio file (MP3, WAV, OGG, or M4A)');
+      if (!validFormats.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a|webm)$/i)) {
+        alert('Please upload a valid audio file (MP3, WAV, OGG, M4A, or WEBM)');
         return;
       }
 
@@ -49,7 +49,13 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
 
   const handleUpload = () => {
     if (selectedFile) {
-      console.log('Uploading file:', selectedFile);
+      const audioUrl = URL.createObjectURL(selectedFile);
+      localStorage.setItem('uploadedAudioFile', JSON.stringify({
+        url: audioUrl,
+        name: selectedFile.name
+      }));
+      onOpenChange(false);
+      router.push('/chat');
     }
   };
 
@@ -79,7 +85,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <button
               onClick={() => setSelectedOption('record')}
-              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group"
+              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group cursor-pointer"
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.emeraldGreen}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
             >
@@ -99,7 +105,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
 
             <button
               onClick={() => setSelectedOption('upload')}
-              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group"
+              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group cursor-pointer"
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.emeraldGreen}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
             >
@@ -131,7 +137,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
             <div className="flex gap-3">
               <button
                 onClick={resetModal}
-                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300"
+                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 cursor-pointer"
                 style={{
                   borderColor: colors.emeraldGreen,
                   color: colors.emeraldGreen,
@@ -149,7 +155,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
               </button>
               <button
                 onClick={handleRecordClick}
-                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300"
+                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 cursor-pointer"
                 style={{
                   backgroundColor: colors.emeraldGreen,
                   color: colors.white
@@ -169,11 +175,11 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                     Click to upload or drag and drop
                   </p>
                   <p className="text-sm text-center text-gray-500 dark:text-gray-500">
-                    MP3, WAV, OGG, or M4A (5-30 seconds recommended)
+                    MP3, WAV, OGG, M4A, or WEBM (5-30 seconds recommended)
                   </p>
                   <input
                     type="file"
-                    accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                    accept="audio/*,.mp3,.wav,.ogg,.m4a,.webm"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -198,7 +204,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                   </div>
                   <button
                     onClick={() => setSelectedFile(null)}
-                    className="p-2 rounded-full transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                    className="p-2 rounded-full transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
                   >
                     <X className="w-4 h-4 text-gray-500" />
                   </button>
@@ -208,7 +214,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
             <div className="flex gap-3">
               <button
                 onClick={resetModal}
-                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300"
+                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 cursor-pointer"
                 style={{
                   borderColor: colors.emeraldGreen,
                   color: colors.emeraldGreen,
@@ -227,7 +233,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
               <button
                 onClick={handleUpload}
                 disabled={!selectedFile}
-                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 style={{
                   backgroundColor: colors.emeraldGreen,
                   color: colors.white
