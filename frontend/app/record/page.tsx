@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Mic, Pause, Play, Check, RotateCcw } from 'lucide-react';
 import { colors } from '@/lib/colors';
@@ -60,7 +61,7 @@ export default function RecordPage() {
       }, 1000);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('Could not access microphone. Please ensure you have granted permission.');
+      toast.error('Could not access microphone. Please ensure you have granted permission.');
     }
   };
 
