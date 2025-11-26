@@ -86,7 +86,7 @@ export function LoginForm({ open, onOpenChange, onSignUpClick }: LoginFormProps)
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80 text-black dark:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80 text-black dark:text-white cursor-pointer"
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -99,27 +99,26 @@ export function LoginForm({ open, onOpenChange, onSignUpClick }: LoginFormProps)
 
           <button
             type="submit"
-            className="w-full h-14 font-bold text-sm rounded-full hover:opacity-90 transition-all mt-8 text-white"
-            style={{ backgroundColor: colors.emeraldGreen }}
+            className="w-full h-14 rounded-full bg-black dark:bg-white text-white font-semibold text-lg tracking-wide transition-colors hover:bg-opacity-80 dark:hover:bg-opacity-80 border-2 border-black dark:border-white cursor-pointer"
+            style={{ backgroundColor: colors.emeraldGreen, borderColor: colors.emeraldGreen }}
           >
-            Login
+            Log In
           </button>
+          <p className="text-center text-xs mt-6">
+            <span className="text-black dark:text-white">Don't have an account? </span>
+            <button
+              type="button"
+              className="font-bold hover:underline"
+              style={{ color: colors.emeraldGreen }}
+              onClick={() => {
+                onOpenChange(false);
+                onSignUpClick?.();
+              }}
+            >
+              Sign up
+            </button>
+          </p>
         </form>
-
-        <p className="text-center text-xs mt-6">
-          <span className="text-black dark:text-white">Don't have account? </span>
-          <button
-            type="button"
-            className="font-bold hover:underline"
-            style={{ color: colors.emeraldGreen }}
-            onClick={() => {
-              onOpenChange(false);
-              onSignUpClick?.();
-            }}
-          >
-            Sign up
-          </button>
-        </p>
       </DialogContent>
     </Dialog>
   );
