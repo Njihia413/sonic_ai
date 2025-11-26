@@ -31,7 +31,7 @@ export default function HomePage() {
               <span style={{ color: colors.emeraldGreen }}>(List)</span>
             </h2>
             <button
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80 cursor-pointer"
               style={{
                 backgroundColor: `${colors.emeraldGreen}30`,
                 color: colors.emeraldGreen
@@ -87,7 +87,7 @@ export default function HomePage() {
                 </p>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="w-full lg:w-auto px-8 py-2.5 rounded-full text-white font-medium transition-all self-start hover:bg-transparent border-2 hover:border-2"
+                  className="w-full lg:w-auto px-8 py-2.5 rounded-full text-white font-medium transition-all self-start hover:bg-transparent border-2 hover:border-2 cursor-pointer"
                   style={{ backgroundColor: colors.emeraldGreen, borderColor: colors.emeraldGreen }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -131,7 +131,7 @@ function VoiceCard({ title, duration, imageUrl }: { title: string; duration: str
         <div className="mt-auto space-y-3">
           <div className="flex gap-2">
             <button
-              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300"
+              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer"
               style={{
                 borderColor: colors.emeraldGreen,
                 color: colors.emeraldGreen
@@ -148,7 +148,7 @@ function VoiceCard({ title, duration, imageUrl }: { title: string; duration: str
               Play
             </button>
             <button
-              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300"
+              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer"
               style={{
                 borderColor: colors.emeraldGreen,
                 color: colors.emeraldGreen
