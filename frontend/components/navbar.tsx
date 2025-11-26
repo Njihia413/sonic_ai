@@ -22,10 +22,12 @@ export function Navbar() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <h1 className="text-xl sm:text-2xl font-bold">
-              <span style={{ color: colors.emeraldGreen }}>Sonic</span>{' '}
-              <span className="text-black dark:text-white">AI</span>
-            </h1>
+            <a href="/home" className="cursor-pointer">
+              <h1 className="text-xl sm:text-2xl font-bold hover:opacity-80 transition-opacity">
+                <span style={{ color: colors.emeraldGreen }}>Sonic</span>{' '}
+                <span className="text-black dark:text-white">AI</span>
+              </h1>
+            </a>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
