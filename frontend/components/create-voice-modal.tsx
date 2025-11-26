@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Mic, Upload, X } from 'lucide-react';
 import {
@@ -34,12 +35,12 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
       const maxSize = 10 * 1024 * 1024;
 
       if (!validFormats.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a|webm)$/i)) {
-        alert('Please upload a valid audio file (MP3, WAV, OGG, M4A, or WEBM)');
+        toast.error('Please upload a valid audio file (MP3, WAV, OGG, M4A, or WEBM)');
         return;
       }
 
       if (file.size > maxSize) {
-        alert('File size must be less than 10MB');
+        toast.error('File size must be less than 10MB');
         return;
       }
 
