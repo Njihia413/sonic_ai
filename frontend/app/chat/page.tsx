@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Navbar } from '@/components/navbar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 import { colors } from '@/lib/colors';
 
 export default function ChatPage() {
@@ -64,7 +66,31 @@ export default function ChatPage() {
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
+    toast.success('Copied to clipboard', {
+      position: 'top-right',
+    });
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleUpvote = () => {
+    toast.success('Thank you for your feedback!', {
+      position: 'top-right',
+    });
+  };
+
+  const handleDownvote = () => {
+    toast.success('Thank you for your feedback!', {
+      position: 'top-right',
+    });
+  };
+
+  const handleStop = () => {
+    setIsLoading(false);
+    setTypingMessageIndex(null);
+  };
+
+  const handleMicrophone = () => {
+    window.location.href = '/record';
   };
 
   const handleSend = async () => {
@@ -130,8 +156,9 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-black">
-      <Navbar />
+    <TooltipProvider>
+      <div className="flex flex-col h-screen bg-white dark:bg-black">
+        <Navbar />
 
       {messages.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -179,7 +206,7 @@ export default function ChatPage() {
                         </button>
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2 mt-2">
                       <button
                         onClick={handleAttachmentClick}
                         className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -195,23 +222,33 @@ export default function ChatPage() {
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         placeholder="Ask me anything..."
-                        className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 bg-transparent text-black dark:text-white placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
+                        className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 bg-transparent text-black dark:text-white placeholder:text-gray-500 placeholder:text-left focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
                       />
                     </div>
                   </div>
                 </div>
-                <Button
-                  onClick={handleSend}
-                  disabled={!message.trim() && !audioFile}
-                  size="icon"
-                  className="absolute right-2 bottom-2 rounded-full h-[40px] w-[40px] shrink-0 transition-all duration-300 disabled:opacity-50"
-                  style={{
-                    backgroundColor: colors.emeraldGreen,
-                    color: colors.white,
-                  }}
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </Button>
+                <div className="absolute right-2 bottom-2 flex items-center gap-2">
+                  <Button
+                    onClick={handleMicrophone}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-full h-[40px] w-[40px] shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </Button>
+                  <Button
+                    onClick={isLoading || typingMessageIndex !== null ? handleStop : handleSend}
+                    disabled={!isLoading && typingMessageIndex === null && !message.trim() && !audioFile}
+                    size="icon"
+                    className="rounded-full h-[40px] w-[40px] shrink-0 transition-all duration-300 disabled:opacity-50"
+                    style={{
+                      backgroundColor: colors.emeraldGreen,
+                      color: colors.white,
+                    }}
+                  >
+                    {(isLoading || typingMessageIndex !== null) ? <Square className="w-4 h-4" fill="currentColor" /> : <ArrowUp className="w-4 h-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -286,25 +323,45 @@ export default function ChatPage() {
                     </div>
                     {msg.role === 'assistant' && !msg.isTyping && (
                       <div className="flex items-center gap-1 mt-2">
-                        <button
-                          onClick={() => handleCopy(msg.content, index)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                          title="Copy"
-                        >
-                          <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                        <button
-                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                          title="Good response"
-                        >
-                          <ThumbsUp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                        <button
-                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                          title="Bad response"
-                        >
-                          <ThumbsDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleCopy(msg.content, index)}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                            <p>Copy</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={handleUpvote}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <ThumbsUp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                            <p>Good response</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={handleDownvote}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <ThumbsDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                            <p>Bad response</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     )}
                   </div>
@@ -363,7 +420,7 @@ export default function ChatPage() {
                           </button>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-2 mt-2">
                         <button
                           onClick={handleAttachmentClick}
                           className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -379,29 +436,40 @@ export default function ChatPage() {
                           onFocus={() => setIsFocused(true)}
                           onBlur={() => setIsFocused(false)}
                           placeholder="Ask me anything..."
-                          className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 bg-transparent text-black dark:text-white placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
+                          className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 bg-transparent text-black dark:text-white placeholder:text-gray-500 placeholder:text-left focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
                         />
                       </div>
                     </div>
                   </div>
-                  <Button
-                    onClick={handleSend}
-                    disabled={!message.trim() && !audioFile}
-                    size="icon"
-                    className="absolute right-2 bottom-2 rounded-full h-[40px] w-[40px] shrink-0 transition-all duration-300 disabled:opacity-50"
-                    style={{
-                      backgroundColor: colors.emeraldGreen,
-                      color: colors.white,
-                    }}
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </Button>
+                  <div className="absolute right-2 bottom-2 flex items-center gap-2">
+                    <Button
+                      onClick={handleMicrophone}
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-full h-[40px] w-[40px] shrink-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      <Mic className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    </Button>
+                    <Button
+                      onClick={isLoading ? handleStop : handleSend}
+                      disabled={!isLoading && !message.trim() && !audioFile}
+                      size="icon"
+                      className="rounded-full h-[40px] w-[40px] shrink-0 transition-all duration-300 disabled:opacity-50"
+                      style={{
+                        backgroundColor: colors.emeraldGreen,
+                        color: colors.white,
+                      }}
+                    >
+                      {isLoading ? <Square className="w-4 h-4" fill="currentColor" /> : <ArrowUp className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
