@@ -1,29 +1,38 @@
-# Backend - FastAPI
+```markdown
+# Sonic AI Backend - FastAPI
 
-This is the backend API for Sonic AI, built with FastAPI.
+This is the backend API for Sonic AI, built with FastAPI and powered by Coqui XTTS-v2..
 
-## Setup
+## Project Structure
 
-1. Create a virtual environment:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: venv\Scripts\activate
-```
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+BACKEND/
+├── Dockerfile
+├── docker-compose.yml
+├── requirements-app.txt      # only extra packages (TTS is in base image)
+├── main.py                   # complete FastAPI app
+├── voices/                   # ← persisted voices (gitignored)
+├── tts_models/               # ← model cache (gitignored)
+└── README.md
 
-3. Run the development server:
-```bash
-uvicorn main:app --reload
-```
 
-The API will be available at `http://localhost:8000`
+## Quick Start (Docker – the only supported way)
 
-## API Documentation
+This project is deliberately Docker-only for reproducibility.  
 
-Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+1. Clone the repo
+git clone <your-repo-url>.git
+cd backend
+
+2. Create persistent folders (only needed once)
+mkdir voices tts_models
+
+3. Start the API
+docker-compose up --build
+
+### Or without compose
+docker build -t sonic-ai-api .
+docker run -p 8000:8000 \
+  -v "$(pwd)/voices:/app/voices" \
+  -v "$(pwd)/tts_models:/root/.local/share/tts" \
+  sonic-ai-api
