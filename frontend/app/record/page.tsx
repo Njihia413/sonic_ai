@@ -189,31 +189,42 @@ export default function RecordPage() {
 
     setIsSubmitting(true);
 
-    const existingVoices = JSON.parse(localStorage.getItem('voices') || '[]');
+    const formData = new FormData();
+    formData.append('name', voiceName.trim());
+    formData.append('file', audioBlob, `${voiceName.trim().replace(/\s+/g, '_')}.wav`);
 
-    if (existingVoices.some((v: any) => v.name.toLowerCase() === voiceName.trim().toLowerCase())) {
-      toast.error('Voice name already exists. Please choose a different name.');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to save voice');
+      }
+
+      const result = await response.json();
+
+      // Store the newly created voice details for the chat page
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const newVoiceForChat = {
+        id: result.id,
+        name: result.name,
+        audio_url: audioUrl,
+      };
+      sessionStorage.setItem('selectedVoice', JSON.stringify(newVoiceForChat));
+
+      toast.success(result.message || 'Voice saved successfully!');
+      setShowNameModal(false);
+      router.push('/chat');
+
+    } catch (error) {
+      console.error('Error saving voice:', error);
+      toast.error((error as Error).message || 'An unexpected error occurred.');
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const audioUrl = URL.createObjectURL(audioBlob);
-    localStorage.setItem('recordedAudioUrl', audioUrl);
-    const newVoice = {
-      id: Date.now().toString(),
-      name: voiceName.trim(),
-      audio_url: audioUrl,
-      created_at: new Date().toISOString()
-    };
-
-    existingVoices.push(newVoice);
-    localStorage.setItem('voices', JSON.stringify(existingVoices));
-    localStorage.setItem('recordedAudioBlob', 'true');
-
-    setIsSubmitting(false);
-    toast.success('Voice saved successfully');
-    setShowNameModal(false);
-    router.push('/chat');
   };
 
   const formatTime = (seconds: number) => {
