@@ -1,7 +1,8 @@
 'use client';
 
-import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -13,17 +14,27 @@ import { colors } from '@/lib/colors';
 interface SignUpFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSignInClick?: () => void;
+  onLoginClick?: () => void;
 }
 
-export function SignUpForm({ open, onOpenChange, onSignInClick }: SignUpFormProps) {
+export function SignUpForm({ open, onOpenChange, onLoginClick }: SignUpFormProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    toast.success('Account created successfully', {
+      position: 'top-right',
+    });
+
+    setTimeout(() => {
+      onOpenChange(false);
+      onLoginClick?.();
+    }, 500);
   };
 
   return (
@@ -31,32 +42,30 @@ export function SignUpForm({ open, onOpenChange, onSignInClick }: SignUpFormProp
       <DialogContent className="max-w-md !w-[calc(100%-2rem)] sm:!w-full rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-3xl font-bold text-left mb-2">
-            <span className="text-black dark:text-white">Create an </span>
-            <span style={{ color: colors.emeraldGreen }}>Account</span>
+            <span style={{ color: colors.emeraldGreen }}>Sign</span>{' '}
+            <span className="text-black dark:text-white">Up</span>
           </DialogTitle>
           <p className="text-sm font-medium text-left text-gray-600 dark:text-gray-400">
-            Join us and start creating today
+            Create an account to get started
           </p>
         </DialogHeader>
 
         <form onSubmit={handleSignUp} className="space-y-6 mt-4">
           <div>
             <label
-              htmlFor="username"
+              htmlFor="name"
               className="block text-[15px] font-semibold mb-3 text-black dark:text-white"
             >
-              Username
+              Your Name
             </label>
             <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black dark:text-white" />
               <input
-                id="username"
+                id="name"
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
                 placeholder="Alex Carter"
                 className="w-full h-14 bg-transparent border border-gray-400 dark:border-gray-600 rounded-full pl-14 pr-4 placeholder:text-xs placeholder:tracking-wider focus:outline-none transition-colors text-black dark:text-white"
-                style={{ outlineColor: colors.emeraldGreen }}
+                style={{ '--tw-ring-color': colors.emeraldGreen } as React.CSSProperties}
                 onFocus={(e) => e.target.style.borderColor = colors.emeraldGreen}
                 onBlur={(e) => e.target.style.borderColor = ''}
               />
@@ -65,7 +74,7 @@ export function SignUpForm({ open, onOpenChange, onSignInClick }: SignUpFormProp
 
           <div>
             <label
-              htmlFor="signup-email"
+              htmlFor="email-signup"
               className="block text-[15px] font-semibold mb-3 text-black dark:text-white"
             >
               Your Email
@@ -73,13 +82,11 @@ export function SignUpForm({ open, onOpenChange, onSignInClick }: SignUpFormProp
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400" />
               <input
-                id="signup-email"
+                id="email-signup"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="alex.carter@email.com"
+                placeholder="alex.carter@gmail.com"
                 className="w-full h-14 bg-transparent border border-gray-400 dark:border-gray-600 rounded-full pl-14 pr-4 placeholder:text-xs placeholder:tracking-wider focus:outline-none transition-colors text-black dark:text-white"
-                style={{ outlineColor: colors.emeraldGreen }}
+                style={{ '--tw-ring-color': colors.emeraldGreen } as React.CSSProperties}
                 onFocus={(e) => e.target.style.borderColor = colors.emeraldGreen}
                 onBlur={(e) => e.target.style.borderColor = ''}
               />
@@ -88,28 +95,26 @@ export function SignUpForm({ open, onOpenChange, onSignInClick }: SignUpFormProp
 
           <div>
             <label
-              htmlFor="signup-password"
+              htmlFor="password-signup"
               className="block text-[15px] font-semibold mb-3 text-black dark:text-white"
             >
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black dark:text-white" />
               <input
-                id="signup-password"
+                id="password-signup"
                 type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 placeholder="**********"
                 className="w-full h-14 bg-transparent border border-gray-400 dark:border-gray-600 rounded-full pl-14 pr-14 placeholder:text-xs placeholder:tracking-wider focus:outline-none transition-colors text-black dark:text-white"
-                style={{ outlineColor: colors.emeraldGreen }}
+                style={{ '--tw-ring-color': colors.emeraldGreen } as React.CSSProperties}
                 onFocus={(e) => e.target.style.borderColor = colors.emeraldGreen}
                 onBlur={(e) => e.target.style.borderColor = ''}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80 text-black dark:text-white cursor-pointer"
+                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80 text-black dark:text-white"
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -122,26 +127,28 @@ export function SignUpForm({ open, onOpenChange, onSignInClick }: SignUpFormProp
 
           <button
             type="submit"
-            className="w-full h-14 rounded-full bg-black dark:bg-white text-white font-semibold text-lg tracking-wide transition-colors hover:bg-opacity-80 dark:hover:bg-opacity-80 border-2 border-black dark:border-white cursor-pointer"
-            style={{ backgroundColor: colors.emeraldGreen, borderColor: colors.emeraldGreen }}
+            disabled={isLoading}
+            className="w-full h-14 font-bold text-sm rounded-full hover:opacity-90 transition-all mt-8 text-white disabled:opacity-70 disabled:cursor-not-allowed"
+            style={{ backgroundColor: colors.emeraldGreen }}
           >
-            Sign Up
+            {isLoading ? 'Creating Account...' : 'Sign Up'}
           </button>
-          <p className="text-center text-xs mt-6">
-            <span className="text-black dark:text-white">Already have an account? </span>
-            <button
-              type="button"
-              className="font-bold hover:underline"
-              style={{ color: colors.emeraldGreen }}
-              onClick={() => {
-                onOpenChange(false);
-                onSignInClick?.();
-              }}
-            >
-              Login
-            </button>
-          </p>
         </form>
+
+        <p className="text-center text-xs mt-6">
+          <span className="text-black dark:text-white">Already have an account? </span>
+          <button
+            type="button"
+            className="font-bold hover:underline"
+            style={{ color: colors.emeraldGreen }}
+            onClick={() => {
+              onOpenChange(false);
+              onLoginClick?.();
+            }}
+          >
+            Log in
+          </button>
+        </p>
       </DialogContent>
     </Dialog>
   );
