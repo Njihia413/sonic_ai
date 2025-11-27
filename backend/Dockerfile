@@ -1,4 +1,4 @@
-FROM ghcr.io/coqui-ai/tts:latest
+FROM --platform=linux/amd64 ghcr.io/coqui-ai/tts:latest
 
 # Docker Desktop GPU compatibility + license
 ENV NVIDIA_VISIBLE_DEVICES=all
