@@ -14,8 +14,8 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy and install only our additional requirements (best caching)
-COPY requirements-app.txt .
-RUN pip install --no-cache-dir -r requirements-app.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source last (so code changes don't invalidate dep layer)
 COPY main.py .

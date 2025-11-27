@@ -1,4 +1,3 @@
-```markdown
 # Sonic AI Backend - FastAPI
 
 This is the backend API for Sonic AI, built with FastAPI and powered by Coqui XTTS-v2..
@@ -16,12 +15,11 @@ BACKEND/
 └── README.md
 
 
-## Quick Start (Docker – the only supported way)
+## Quick Start (Docker)
 
 This project is deliberately Docker-only for reproducibility.  
 
-1. Clone the repo
-git clone <your-repo-url>.git
+1. Navigate to the working directory
 cd backend
 
 2. Create persistent folders (only needed once)
