@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-react';
+import { BounceLoader } from 'react-spinners';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,8 +13,8 @@ import { colors } from '@/lib/colors';
 
 export default function ChatPage() {
   const [message, setMessage] = useState('');
-  const [audioFile, setAudioFile] = useState<{ url: string; name: string } | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState('alloy');
+  const [audioFile, setAudioFile] = useState<{ url: string; name: string; id: string } | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; attachment?: { url: string; name: string } | null; audioResponse?: { url: string; text: string } | null; isTyping?: boolean }>>([]);
   const [isFocused, setIsFocused] = useState(false);
   const [displayedText, setDisplayedText] = useState('');
@@ -28,29 +29,44 @@ export default function ChatPage() {
   const [voices, setVoices] = useState<Array<{ value: string; label: string }>>([]);
 
   useEffect(() => {
-    const storedVoices = localStorage.getItem('voices');
-    if (storedVoices) {
-      const parsedVoices = JSON.parse(storedVoices);
-      const formattedVoices = parsedVoices.map((voice: { id: string; name: string }) => ({
-        value: voice.id,
-        label: voice.name,
-      }));
-      setVoices(formattedVoices);
-      if (formattedVoices.length > 0) {
-        setSelectedVoice(formattedVoices[0].value);
-      }
-    }
-    const audioUrl = localStorage.getItem('recordedAudioUrl');
-    const audioBlob = localStorage.getItem('recordedAudioBlob');
-    const uploadedAudio = localStorage.getItem('uploadedAudioFile');
+    const fetchAndSetVoices = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch voices');
+        }
+        const data = await response.json();
+        const fetchedVoices = data.voices.map((v: any) => ({ value: v.id, label: v.name }));
+        
+        let allVoices = fetchedVoices;
 
-    if (audioUrl && audioBlob) {
-      setAudioFile({ url: audioUrl, name: 'Recorded Audio' });
-    } else if (uploadedAudio) {
-      const audioData = JSON.parse(uploadedAudio);
-      setAudioFile(audioData);
-    }
+        // Check session storage for a newly created voice
+        const newVoiceJSON = sessionStorage.getItem('selectedVoice');
+        if (newVoiceJSON) {
+          const newVoice = JSON.parse(newVoiceJSON);
+          setAudioFile({ url: newVoice.audio_url, name: newVoice.name, id: newVoice.id });
+          
+          // Add the new voice to the list if it's not already there
+          if (!fetchedVoices.some((v: any) => v.value === newVoice.id)) {
+            allVoices = [{ value: newVoice.id, label: newVoice.name }, ...fetchedVoices];
+          }
+          setSelectedVoice(newVoice.id);
+          sessionStorage.removeItem('selectedVoice'); // Clean up
+        } else if (fetchedVoices.length > 0) {
+          setSelectedVoice(fetchedVoices[0].value);
+        }
+
+        setVoices(allVoices);
+
+      } catch (error) {
+        console.error("Error setting voices:", error);
+        toast.error("Could not load voices.");
+      }
+    };
+
+    fetchAndSetVoices();
   }, []);
+
 
   useEffect(() => {
     if (messages.length === 0 && displayedText.length < fullText.length) {
@@ -62,20 +78,15 @@ export default function ChatPage() {
   }, [displayedText, messages.length, fullText]);
 
   const handleRemoveAudio = () => {
+    if (audioFile) {
+      URL.revokeObjectURL(audioFile.url); // Clean up the object URL
+    }
     setAudioFile(null);
-    localStorage.removeItem('recordedAudioUrl');
-    localStorage.removeItem('recordedAudioBlob');
-    localStorage.removeItem('uploadedAudioFile');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('audio/')) {
-      const url = URL.createObjectURL(file);
-      const audioData = { url, name: file.name };
-      setAudioFile(audioData);
-      localStorage.setItem('uploadedAudioFile', JSON.stringify(audioData));
-    }
+     // This function is for manual attachment, which we are not focusing on now.
+     // We can leave it as is or expand it later if needed.
   };
 
   const handleAttachmentClick = () => {
@@ -113,65 +124,88 @@ export default function ChatPage() {
   };
 
   const handleSend = async () => {
-    if (!message.trim() && !audioFile) return;
+    if (!message.trim() || !selectedVoice) {
+      toast.error("Please enter a message and select a voice.");
+      return;
+    }
 
-    const newMessage = {
+    const userMessage = {
       role: 'user' as const,
       content: message,
-      attachment: audioFile ? { ...audioFile } : null
+      attachment: audioFile ? { url: audioFile.url, name: audioFile.name } : null
     };
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, userMessage]);
+    
+    const textToSynthesize = message;
     setMessage('');
     setAudioFile(null);
     setIsLoading(true);
-    localStorage.removeItem('recordedAudioUrl');
-    localStorage.removeItem('recordedAudioBlob');
-    localStorage.removeItem('uploadedAudioFile');
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const responseText = "Sure, I'll help you with that. Here's the audio response you requested. You can play it or download it for later use.";
-
-    const dummyAudioUrl = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGmm98d2QQAoUYLPp66hVFApGnuDyvmwhBSeBy+/biy8HGWi68d2RQAoUX7Pp66hVFApGnuDyvmwhBSeBy+/biy8HGGm88d2RQAoUXrPp66hVFApGnuDyvmwhBSaCzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBSaBzO/biy8HGWi78d2RQAoUXrPp66hVFApGnuDyv2wiBQ==';
 
     const assistantMessageIndex = messages.length + 1;
-    const initialMessage = {
+    const initialAssistantMessage = {
       role: 'assistant' as const,
       content: '',
-      audioResponse: { url: dummyAudioUrl, text: responseText },
       isTyping: true,
+      audioResponse: null,
       attachment: null
     };
-
-    setMessages(prev => [...prev, initialMessage]);
-    setIsLoading(false);
+    setMessages(prev => [...prev, initialAssistantMessage]);
     setTypingMessageIndex(assistantMessageIndex);
 
-    for (let i = 0; i <= responseText.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 30));
-      setMessages(prev => {
+    try {
+      const formData = new FormData();
+      formData.append('text', textToSynthesize);
+      formData.append('voice_id', selectedVoice);
+      // Language is hardcoded to 'en' for now, as in the backend default.
+      formData.append('language', 'en');
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/generate`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate audio');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      const responseText = `Here is the audio for the text you provided.`;
+
+       setMessages(prev => {
         const updated = [...prev];
         if (updated[assistantMessageIndex]) {
           updated[assistantMessageIndex] = {
             ...updated[assistantMessageIndex],
-            content: responseText.slice(0, i)
+            content: responseText,
+            audioResponse: { url: audioUrl, text: responseText },
+            isTyping: false,
           };
         }
         return updated;
       });
-    }
 
-    setMessages(prev => {
-      const updated = [...prev];
-      if (updated[assistantMessageIndex]) {
-        updated[assistantMessageIndex] = {
-          ...updated[assistantMessageIndex],
-          isTyping: false
-        };
-      }
-      return updated;
-    });
-    setTypingMessageIndex(null);
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      const errorMessage = (error as Error).message || 'An unexpected error occurred during audio generation.';
+      toast.error(errorMessage);
+       setMessages(prev => {
+        const updated = [...prev];
+        if (updated[assistantMessageIndex]) {
+          updated[assistantMessageIndex] = {
+            ...updated[assistantMessageIndex],
+            content: `Error: ${errorMessage}`,
+            isTyping: false,
+          };
+        }
+        return updated;
+      });
+    } finally {
+      setIsLoading(false);
+      setTypingMessageIndex(null);
+    }
   };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -236,7 +270,7 @@ export default function ChatPage() {
               <Paperclip className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-              <SelectTrigger className="w-[160px] h-9 rounded-full border-gray-400 dark:border-gray-600 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800">
+              <SelectTrigger className="h-9 rounded-full border-gray-400 dark:border-gray-600 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800">
                 <div className="flex items-center gap-2">
                   <Volume2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   <SelectValue />
@@ -359,13 +393,14 @@ export default function ChatPage() {
                                 <div className="h-full rounded-full" style={{ width: '0%', backgroundColor: colors.emeraldGreen }}></div>
                               </div>
                               <a
-                                href={msg.audioResponse.url}
-                                download="response.wav"
-                                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                style={{ color: colors.emeraldGreen }}
-                              >
-                                <Download className="w-5 h-5" />
-                              </a>
+                                 href={msg.audioResponse.url}
+                                 download="response.wav"
+                                 onClick={() => toast.success('Audio file downloaded successfully!')}
+                                 className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                 style={{ color: colors.emeraldGreen }}
+                               >
+                                 <Download className="w-5 h-5" />
+                               </a>
                             </div>
                           )}
                         </div>
@@ -420,14 +455,14 @@ export default function ChatPage() {
                 </div>
               ))}
               {isLoading && (
-                <div className="flex items-start">
-                  <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen }}></div>
-                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '0.4s' }}></div>
-                    </div>
-                  </div>
+                <div className="flex items-start justify-start">
+                  <BounceLoader
+                    color={colors.emeraldGreen}
+                    loading={isLoading}
+                    size={40}
+                    aria-label="Loading Spinner"
+                    data-testid="loader"
+                  />
                 </div>
               )}
             </div>
