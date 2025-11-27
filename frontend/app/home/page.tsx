@@ -1,12 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/navbar';
 import { CreateVoiceModal } from '@/components/create-voice-modal';
 import { colors } from '@/lib/colors';
+import { toast } from 'sonner';
+import { BounceLoader } from 'react-spinners';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Play, Pause } from 'lucide-react';
+
+interface Voice {
+  id: string;
+  name: string;
+  duration_sec: number;
+  uploaded_at: string;
+  original_filename: string;
+}
 
 export default function HomePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchVoices = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch voices');
+      }
+      const data = await response.json();
+      setVoices(data.voices || []);
+    } catch (error) {
+      console.error('Error fetching voices:', error);
+      toast.error((error as Error).message || 'Could not fetch voices.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVoices();
+  }, []);
+
+  const handleDelete = async (voiceId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices/${voiceId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete voice');
+      }
+      
+      const result = await response.json();
+      toast.success(result.message || 'Voice deleted successfully!');
+      fetchVoices(); // Refresh the list after deletion
+    } catch (error) {
+      console.error('Error deleting voice:', error);
+      toast.error((error as Error).message || 'An unexpected error occurred.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
@@ -28,36 +83,39 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-bold">
               <span className="text-black dark:text-white">Your Voices </span>
-              <span style={{ color: colors.emeraldGreen }}>(List)</span>
+              <span style={{ color: colors.emeraldGreen }}>({voices.length})</span>
             </h2>
             <button
+              onClick={fetchVoices}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80 cursor-pointer"
               style={{
                 backgroundColor: `${colors.emeraldGreen}30`,
                 color: colors.emeraldGreen
               }}
             >
-              View All
+              Refresh
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            <VoiceCard
-              title="Podcast Intro"
-              duration="1:20"
-              imageUrl="https://images.pexels.com/photos/7088534/pexels-photo-7088534.jpeg?auto=compress&cs=tinysrgb&w=800"
-            />
-            <VoiceCard
-              title="Audiobook Narration"
-              duration="1:20"
-              imageUrl="https://images.pexels.com/photos/159581/dictionary-reference-book-learning-meaning-159581.jpeg?auto=compress&cs=tinysrgb&w=800"
-            />
-            <VoiceCard
-              title="Custom Greeting"
-              duration="1:20"
-              imageUrl="https://images.pexels.com/photos/887751/pexels-photo-887751.jpeg?auto=compress&cs=tinysrgb&w=800"
-            />
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <BounceLoader
+                color={colors.emeraldGreen}
+                loading={isLoading}
+                size={60}
+                aria-label="Loading Spinner"
+                data-testid="loader"
+              />
+            </div>
+          ) : voices.length === 0 ? (
+            <div className="text-center text-gray-500 dark:text-gray-400">No voices found. Create one!</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+              {voices.map((voice) => (
+                <VoiceCard key={voice.id} voice={voice} onDelete={handleDelete} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section>
@@ -111,27 +169,40 @@ export default function HomePage() {
   );
 }
 
-function VoiceCard({ title, duration, imageUrl }: { title: string; duration: string; imageUrl: string }) {
-  return (
-    <div className="rounded-2xl overflow-hidden flex flex-col h-full cursor-pointer transition-all ease-in-out duration-300 hover:scale-105">
-      <div className="relative h-48 bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
-      </div>
+function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: string) => void }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-      <div className="bg-gray-100 dark:bg-[#202020] p-4 sm:p-5 flex flex-col flex-1">
-        <h3 className="text-base sm:text-lg font-semibold text-black dark:text-white mb-2">{title}</h3>
-        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Duration: <span style={{ color: colors.emeraldGreen }}>{duration}</span>
+  const handlePlay = () => {
+    // This is a placeholder. To make this work, we need a way to serve the audio files.
+    // For now, let's just log to the console.
+    console.log("Playing audio for", voice.id);
+    toast.info("Play functionality is not yet implemented for voice cards.");
+  };
+
+  const handleDeleteClick = async () => {
+    setIsDeleting(true);
+    await onDelete(voice.id);
+    // No need to set isDeleting to false if the component unmounts after deletion
+  };
+  
+  return (
+    <div className="rounded-2xl overflow-hidden flex flex-col h-full bg-gray-100 dark:bg-[#202020] transition-all ease-in-out duration-300 hover:scale-105">
+      <div className="p-4 sm:p-5 flex flex-col flex-1">
+        <h3 className="text-base sm:text-lg font-semibold text-black dark:text-white mb-2">{voice.name}</h3>
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Duration: <span style={{ color: colors.emeraldGreen }}>{voice.duration_sec.toFixed(1)}s</span>
+        </p>
+         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
+          ID: <span className="font-mono">{voice.id}</span>
         </p>
 
         <div className="mt-auto space-y-3">
           <div className="flex gap-2">
-            <button
-              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer"
+             <button
+              onClick={handlePlay}
+              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer flex items-center justify-center"
               style={{
                 borderColor: colors.emeraldGreen,
                 color: colors.emeraldGreen
@@ -145,25 +216,43 @@ function VoiceCard({ title, duration, imageUrl }: { title: string; duration: str
                 e.currentTarget.style.color = colors.emeraldGreen;
               }}
             >
+              <Play className="w-4 h-4 mr-1" />
               Play
             </button>
-            <button
-              className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer"
-              style={{
-                borderColor: colors.emeraldGreen,
-                color: colors.emeraldGreen
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.emeraldGreen;
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = colors.emeraldGreen;
-              }}
-            >
-              Delete
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  disabled={isDeleting}
+                  className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer disabled:opacity-50"
+                   style={{
+                    borderColor: colors.emeraldGreen,
+                    color: colors.emeraldGreen
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.emeraldGreen;
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = colors.emeraldGreen;
+                  }}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the voice "{voice.name}".
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteClick}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
