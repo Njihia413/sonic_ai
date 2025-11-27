@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Mic, Upload, X } from 'lucide-react';
 import {
@@ -11,7 +10,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { colors } from '@/lib/colors';
+import { toast } from 'sonner';
 
 interface CreateVoiceModalProps {
   open: boolean;
@@ -22,6 +24,8 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
   const router = useRouter();
   const [selectedOption, setSelectedOption] = useState<'record' | 'upload' | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [voiceName, setVoiceName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRecordClick = () => {
     onOpenChange(false);
@@ -31,16 +35,16 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validFormats = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/ogg', 'audio/m4a', 'audio/webm'];
+      const validFormats = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/ogg', 'audio/m4a'];
       const maxSize = 10 * 1024 * 1024;
 
-      if (!validFormats.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a|webm)$/i)) {
-        toast.error('Please upload a valid audio file (MP3, WAV, OGG, M4A, or WEBM)');
+      if (!validFormats.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+        alert('Please upload a valid audio file (MP3, WAV, OGG, or M4A)');
         return;
       }
 
       if (file.size > maxSize) {
-        toast.error('File size must be less than 10MB');
+        alert('File size must be less than 10MB');
         return;
       }
 
@@ -48,21 +52,53 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
     }
   };
 
-  const handleUpload = () => {
-    if (selectedFile) {
-      const audioUrl = URL.createObjectURL(selectedFile);
-      localStorage.setItem('uploadedAudioFile', JSON.stringify({
-        url: audioUrl,
-        name: selectedFile.name
-      }));
-      onOpenChange(false);
-      router.push('/chat');
+  const handleUpload = async () => {
+    if (!voiceName.trim()) {
+      toast.error('Please enter a voice name');
+      return;
     }
+
+    if (!selectedFile) {
+      toast.error('Please select a file');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const existingVoices = JSON.parse(localStorage.getItem('voices') || '[]');
+
+    if (existingVoices.some((v: any) => v.name.toLowerCase() === voiceName.trim().toLowerCase())) {
+      toast.error('Voice name already exists. Please choose a different name.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const audioUrl = URL.createObjectURL(selectedFile);
+    const newVoice = {
+      id: Date.now().toString(),
+      name: voiceName.trim(),
+      audio_url: audioUrl,
+      created_at: new Date().toISOString()
+    };
+
+    existingVoices.push(newVoice);
+    localStorage.setItem('voices', JSON.stringify(existingVoices));
+
+    localStorage.setItem('uploadedAudioFile', JSON.stringify({
+      url: audioUrl,
+      name: selectedFile.name
+    }));
+
+    setIsSubmitting(false);
+    toast.success('File uploaded successfully');
+    onOpenChange(false);
+    router.push('/chat');
   };
 
   const resetModal = () => {
     setSelectedOption(null);
     setSelectedFile(null);
+    setVoiceName('');
   };
 
   return (
@@ -86,7 +122,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <button
               onClick={() => setSelectedOption('record')}
-              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group cursor-pointer"
+              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group"
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.emeraldGreen}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
             >
@@ -106,7 +142,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
 
             <button
               onClick={() => setSelectedOption('upload')}
-              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group cursor-pointer"
+              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group"
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.emeraldGreen}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
             >
@@ -138,7 +174,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
             <div className="flex gap-3">
               <button
                 onClick={resetModal}
-                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300"
                 style={{
                   borderColor: colors.emeraldGreen,
                   color: colors.emeraldGreen,
@@ -156,7 +192,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
               </button>
               <button
                 onClick={handleRecordClick}
-                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300"
                 style={{
                   backgroundColor: colors.emeraldGreen,
                   color: colors.white
@@ -176,11 +212,11 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                     Click to upload or drag and drop
                   </p>
                   <p className="text-sm text-center text-gray-500 dark:text-gray-500">
-                    MP3, WAV, OGG, M4A, or WEBM (5-30 seconds recommended)
+                    MP3, WAV, OGG, or M4A (5-30 seconds recommended)
                   </p>
                   <input
                     type="file"
-                    accept="audio/*,.mp3,.wav,.ogg,.m4a,.webm"
+                    accept="audio/*,.mp3,.wav,.ogg,.m4a"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -205,17 +241,41 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                   </div>
                   <button
                     onClick={() => setSelectedFile(null)}
-                    className="p-2 rounded-full transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                    className="p-2 rounded-full transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                   >
                     <X className="w-4 h-4 text-gray-500" />
                   </button>
                 </div>
               )}
             </div>
+
+            {selectedFile && (
+              <div>
+                <Label htmlFor="uploadVoiceName" className="text-black dark:text-white">
+                  Voice Name
+                </Label>
+                <Input
+                  id="uploadVoiceName"
+                  value={voiceName}
+                  onChange={(e) => setVoiceName(e.target.value)}
+                  placeholder="e.g., My Voice, Professional Voice"
+                  className="mt-2 h-14 bg-transparent border border-gray-400 dark:border-gray-600 rounded-full px-4 text-black dark:text-white focus:outline-none transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                  style={{ '--tw-ring-color': colors.emeraldGreen } as React.CSSProperties}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = colors.emeraldGreen)}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = '')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isSubmitting) {
+                      handleUpload();
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={resetModal}
-                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300"
                 style={{
                   borderColor: colors.emeraldGreen,
                   color: colors.emeraldGreen,
@@ -233,14 +293,14 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
               </button>
               <button
                 onClick={handleUpload}
-                disabled={!selectedFile}
-                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={!selectedFile || isSubmitting}
+                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: colors.emeraldGreen,
                   color: colors.white
                 }}
               >
-                Continue
+                {isSubmitting ? 'Uploading...' : 'Continue'}
               </button>
             </div>
           </div>
