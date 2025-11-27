@@ -65,7 +65,7 @@ export default function Home() {
       <SignUpForm
         open={showSignUpModal}
         onOpenChange={setShowSignUpModal}
-        onSignInClick={() => setShowLoginModal(true)}
+        onLoginClick={() => setShowLoginModal(true)}
       />
     </>
   );
