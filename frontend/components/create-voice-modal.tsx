@@ -130,7 +130,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <button
               onClick={() => setSelectedOption('record')}
-              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group"
+              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group cursor-pointer"
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.emeraldGreen}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
             >
@@ -150,7 +150,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
 
             <button
               onClick={() => setSelectedOption('upload')}
-              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group"
+              className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 transition-all ease-in-out duration-300 flex flex-col items-center gap-4 group cursor-pointer"
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.emeraldGreen}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
             >
@@ -182,7 +182,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
             <div className="flex gap-3">
               <button
                 onClick={resetModal}
-                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300"
+                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 cursor-pointer"
                 style={{
                   borderColor: colors.emeraldGreen,
                   color: colors.emeraldGreen,
@@ -200,7 +200,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
               </button>
               <button
                 onClick={handleRecordClick}
-                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300"
+                className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 cursor-pointer"
                 style={{
                   backgroundColor: colors.emeraldGreen,
                   color: colors.white
@@ -283,7 +283,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
             <div className="flex gap-3">
               <button
                 onClick={resetModal}
-                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300"
+                className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 cursor-pointer"
                 style={{
                   borderColor: colors.emeraldGreen,
                   color: colors.emeraldGreen,
