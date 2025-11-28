@@ -276,7 +276,7 @@ export default function RecordPage() {
           {!isRecording && !audioBlob ? (
             <button
               onClick={startRecording}
-              className="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+              className="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
               style={{ backgroundColor: colors.emeraldGreen }}
             >
               <Mic className="w-10 h-10 text-white" />
@@ -285,7 +285,7 @@ export default function RecordPage() {
             <>
               <button
                 onClick={isPaused ? resumeRecording : pauseRecording}
-                className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-300 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
               >
                 {isPaused ? (
                   <Play className="w-7 h-7 text-gray-700 dark:text-gray-300" />
@@ -296,7 +296,7 @@ export default function RecordPage() {
 
               <button
                 onClick={stopRecording}
-                className="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
                 style={{ backgroundColor: colors.emeraldGreen }}
               >
                 <Check className="w-10 h-10 text-white" />
@@ -306,14 +306,14 @@ export default function RecordPage() {
             <>
               <button
                 onClick={retryRecording}
-                className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all duration-300 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <RotateCcw className="w-7 h-7 text-gray-700 dark:text-gray-300" />
               </button>
 
               <button
                 onClick={saveRecording}
-                className="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
                 style={{ backgroundColor: colors.emeraldGreen }}
               >
                 <Check className="w-10 h-10 text-white" />
@@ -369,7 +369,7 @@ export default function RecordPage() {
             <button
               onClick={() => setShowNameModal(false)}
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 rounded-full border-2 font-medium transition-all ease-in-out duration-300 disabled:opacity-50 cursor-pointer"
               style={{
                 borderColor: colors.emeraldGreen,
                 color: colors.emeraldGreen,
@@ -380,7 +380,7 @@ export default function RecordPage() {
             <button
               onClick={handleSaveWithName}
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 rounded-full font-medium transition-all ease-in-out duration-300 disabled:opacity-50 cursor-pointer"
               style={{
                 backgroundColor: colors.emeraldGreen,
                 color: colors.white
