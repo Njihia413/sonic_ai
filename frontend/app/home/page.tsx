@@ -141,7 +141,7 @@ export default function HomePage() {
                   <span style={{ color: colors.emeraldGreen }}>Creation</span>
                 </h3>
                 <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 max-w-xl">
-                  Generate personalized AI voices from text with customizable options.
+                  Generate personalized AI voices from text.
                 </p>
                 <button
                   onClick={() => setShowCreateModal(true)}
