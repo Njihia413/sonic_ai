@@ -191,7 +191,7 @@ export default function RecordPage() {
 
     const formData = new FormData();
     formData.append('name', voiceName.trim());
-    formData.append('file', audioBlob, `${voiceName.trim().replace(/\s+/g, '_')}.wav`);
+    formData.append('files', audioBlob, `${voiceName.trim().replace(/\s+/g, '_')}.wav`);
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices`, {
@@ -333,7 +333,7 @@ export default function RecordPage() {
     </div>
 
     <Dialog open={showNameModal} onOpenChange={setShowNameModal}>
-      <DialogContent className="max-w-md !w-[calc(100%-2rem)] sm:!w-full rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700">
+      <DialogContent className="max-w-md w-[calc(100%-2rem)]! sm:w-full! rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-black dark:text-white">
             Name Your Voice
@@ -482,7 +482,8 @@ function WaveVisualization({ isActive }: { isActive: boolean }) {
             {[...Array(12)].map((_, i) => {
               const angle = (i * 30 * Math.PI) / 180;
               const baseRadius = 48;
-              const barLength = 8 + Math.random() * 4;
+              // Use deterministic values based on index instead of Math.random()
+              const barLength = 8 + ((i * 7) % 5);
               const startX = 100 + Math.cos(angle) * baseRadius;
               const startY = 100 + Math.sin(angle) * baseRadius;
               const endX = 100 + Math.cos(angle) * (baseRadius + barLength);
@@ -502,7 +503,7 @@ function WaveVisualization({ isActive }: { isActive: boolean }) {
                   filter="url(#glow)"
                   className="animate-pulse"
                   style={{
-                    animationDuration: `${0.8 + Math.random() * 0.4}s`,
+                    animationDuration: `${0.8 + ((i * 3) % 5) * 0.1}s`,
                     animationDelay: `${i * 0.08}s`
                   }}
                 />
