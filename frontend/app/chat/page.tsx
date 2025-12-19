@@ -11,6 +11,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { colors } from '@/lib/colors';
 
+interface VoiceOption {
+  value: string;
+  label: string;
+}
+
+interface ApiVoice {
+  id: string;
+  name: string;
+}
+
 export default function ChatPage() {
   const [message, setMessage] = useState('');
   const [audioFile, setAudioFile] = useState<{ url: string; name: string; id: string } | null>(null);
@@ -21,7 +31,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const [playingAudio, setPlayingAudio] = useState<number | null>(null);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [, setCopiedIndex] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fullText = "Hello, I'm Sonic AI. How may I help you today?";
@@ -36,7 +46,7 @@ export default function ChatPage() {
           throw new Error('Failed to fetch voices');
         }
         const data = await response.json();
-        const fetchedVoices = data.voices.map((v: any) => ({ value: v.id, label: v.name }));
+        const fetchedVoices: VoiceOption[] = data.voices.map((v: ApiVoice) => ({ value: v.id, label: v.name }));
         
         let allVoices = fetchedVoices;
 
@@ -47,7 +57,7 @@ export default function ChatPage() {
           setAudioFile({ url: newVoice.audio_url, name: newVoice.name, id: newVoice.id });
           
           // Add the new voice to the list if it's not already there
-          if (!fetchedVoices.some((v: any) => v.value === newVoice.id)) {
+          if (!fetchedVoices.some((v: VoiceOption) => v.value === newVoice.id)) {
             allVoices = [{ value: newVoice.id, label: newVoice.name }, ...fetchedVoices];
           }
           setSelectedVoice(newVoice.id);
@@ -84,7 +94,7 @@ export default function ChatPage() {
     setAudioFile(null);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = () => {
      // This function is for manual attachment, which we are not focusing on now.
      // We can leave it as is or expand it later if needed.
   };
@@ -264,7 +274,7 @@ export default function ChatPage() {
             />
             <button
               onClick={handleAttachmentClick}
-              className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Attach audio file"
             >
               <Paperclip className="w-5 h-5 text-gray-500 dark:text-gray-400" />
