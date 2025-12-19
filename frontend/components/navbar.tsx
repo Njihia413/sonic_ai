@@ -1,6 +1,4 @@
 'use client';
-
-import { useState } from 'react';
 import { ThemeToggle } from './theme-toggle';
 import { LogOut } from 'lucide-react';
 import {
