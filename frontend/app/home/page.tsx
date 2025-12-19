@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { CreateVoiceModal } from '@/components/create-voice-modal';
 import { colors } from '@/lib/colors';
 import { toast } from 'sonner';
 import { BounceLoader } from 'react-spinners';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Play, Pause } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 interface Voice {
   id: string;
   name: string;
-  duration_sec: number;
+  duration_sec?: number;
   uploaded_at: string;
   original_filename: string;
 }
@@ -127,7 +127,7 @@ export default function HomePage() {
 
           <div className="bg-gray-100 dark:bg-[#202020] rounded-2xl p-6 sm:p-8 lg:p-10">
             <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-8">
-              <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl bg-gray-200 dark:bg-[#121212] flex items-center justify-center">
+              <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl bg-gray-200 dark:bg-[#121212] flex items-center justify-center">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="w-12 h-12 sm:w-14 sm:h-14">
                   <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" fill={colors.emeraldGreen} stroke={colors.emeraldGreen} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -171,8 +171,6 @@ export default function HomePage() {
 
 function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: string) => void }) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handlePlay = () => {
     // This is a placeholder. To make this work, we need a way to serve the audio files.
@@ -192,7 +190,7 @@ function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: stri
       <div className="p-4 sm:p-5 flex flex-col flex-1">
         <h3 className="text-base sm:text-lg font-semibold text-black dark:text-white mb-2">{voice.name}</h3>
         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Duration: <span style={{ color: colors.emeraldGreen }}>{voice.duration_sec.toFixed(1)}s</span>
+          Duration: <span style={{ color: colors.emeraldGreen }}>{voice.duration_sec != null ? voice.duration_sec.toFixed(1) : 'N/A'}s</span>
         </p>
          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
           ID: <span className="font-mono">{voice.id}</span>
@@ -244,7 +242,7 @@ function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: stri
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the voice "{voice.name}".
+                    This action cannot be undone. This will permanently delete the voice &ldquo;{voice.name}&rdquo;.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
