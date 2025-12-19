@@ -39,7 +39,7 @@ export function SignUpForm({ open, onOpenChange, onLoginClick }: SignUpFormProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md !w-[calc(100%-2rem)] sm:!w-full rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700">
+      <DialogContent className="max-w-md w-[calc(100%-2rem)]! sm:w-full! rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-3xl font-bold text-left mb-2">
             <span style={{ color: colors.emeraldGreen }}>Sign</span>{' '}
