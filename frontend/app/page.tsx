@@ -13,7 +13,7 @@ export default function Home() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#0A0A0A] dark:bg-[#0A0A0A] bg-white flex flex-col items-center justify-between px-6 py-12">
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-between px-6 py-12">
         <div className="absolute top-6 right-6">
           <ThemeToggle />
         </div>
@@ -25,7 +25,7 @@ export default function Home() {
                 <span className="dark:text-white text-black">Sonic</span>
                 <span style={{ color: colors.emeraldGreen }}>AI</span>
               </h1>
-              <p className="text-gray-300 dark:text-gray-300 text-gray-700 text-base md:text-lg font-light tracking-wide">
+              <p className="text-gray-700 dark:text-gray-300 text-base md:text-lg font-light tracking-wide">
                 Bringing Your Words to Life
               </p>
             </div>
