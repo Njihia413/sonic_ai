@@ -115,14 +115,14 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
       if (!isOpen) resetModal();
     }}>
       <DialogContent
-        className="max-w-md !w-[calc(100%-2rem)] sm:!w-full rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700"
+        className="max-w-md w-[calc(100%-2rem)]! sm:w-full! rounded-xl bg-white dark:bg-[#0A0A0A] text-black dark:text-white border-gray-300 dark:border-gray-700"
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-black dark:text-white">
             Create Voice
           </DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">
-            Choose how you'd like to create your voice
+            Choose how you&apos;d like to create your voice
           </DialogDescription>
         </DialogHeader>
 
@@ -173,7 +173,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
             <div className="p-6 rounded-xl border-2 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-gray-700 text-center">
               <Mic className="w-12 h-12 mx-auto mb-3" style={{ color: colors.emeraldGreen }} />
               <p className="mb-4 text-gray-600 dark:text-gray-400">
-                You'll be redirected to the recording page where you can record your voice sample.
+                You&apos;ll be redirected to the recording page where you can record your voice sample.
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-500">
                 Recommended: 5-30 seconds
