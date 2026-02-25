@@ -12,6 +12,7 @@ import { Play } from 'lucide-react';
 interface Voice {
   id: string;
   name: string;
+  duration?: number;
   duration_sec?: number;
   uploaded_at: string;
   original_filename: string;
@@ -190,7 +191,7 @@ function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: stri
       <div className="p-4 sm:p-5 flex flex-col flex-1">
         <h3 className="text-base sm:text-lg font-semibold text-black dark:text-white mb-2">{voice.name}</h3>
         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Duration: <span style={{ color: colors.emeraldGreen }}>{voice.duration_sec != null ? voice.duration_sec.toFixed(1) : 'N/A'}s</span>
+          Duration: <span style={{ color: colors.emeraldGreen }}>{(voice.duration ?? voice.duration_sec) != null ? (voice.duration ?? voice.duration_sec)!.toFixed(1) : 'N/A'}s</span>
         </p>
          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
           ID: <span className="font-mono">{voice.id}</span>
