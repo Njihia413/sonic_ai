@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mic, Pause, Play, Check, RotateCcw } from 'lucide-react';
 import { colors } from '@/lib/colors';
@@ -15,6 +15,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+
+const MIN_RECORDING_TIME = 15; // seconds — visual countdown only
 
 const convertToWav = async (webmBlob: Blob): Promise<Blob> => {
   const audioContext = new AudioContext();
@@ -74,29 +76,57 @@ export default function RecordPage() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [voiceName, setVoiceName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
+
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
     };
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    }
   }, []);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+
+      // Set up Web Audio API analyser for live waveform
+      const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -113,6 +143,11 @@ export default function RecordPage() {
         setAudioBlob(wavBlob);
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+          audioContextRef.current = null;
+          analyserRef.current = null;
         }
       };
 
@@ -146,17 +181,6 @@ export default function RecordPage() {
       timerIntervalRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      setIsPaused(false);
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
     }
   };
 
@@ -233,6 +257,9 @@ export default function RecordPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+
+  const progressRatio = Math.min(recordingTime / MIN_RECORDING_TIME, 1);
+
   return (
     <>
       <Navbar />
@@ -255,7 +282,11 @@ export default function RecordPage() {
         </div>
 
         <div className="relative flex items-center justify-center mb-12">
-          <WaveVisualization isActive={isRecording && !isPaused} />
+          <LiveWaveVisualization
+            isActive={isRecording && !isPaused}
+            analyser={analyserRef.current}
+            progressRatio={isRecording ? progressRatio : 0}
+          />
 
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
@@ -266,7 +297,11 @@ export default function RecordPage() {
                 {formatTime(recordingTime)}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                {isRecording ? 'Recording' : audioBlob ? 'Complete' : 'Ready'}
+                {isRecording
+                  ? recordingTime < MIN_RECORDING_TIME
+                    ? `Min ${MIN_RECORDING_TIME - recordingTime}s more`
+                    : '✓ Min reached · stop anytime'
+                  : audioBlob ? 'Complete' : 'Ready'}
               </div>
             </div>
           </div>
@@ -325,7 +360,7 @@ export default function RecordPage() {
         {isRecording && (
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Recommended: 5-30 seconds for best results
+              Recommended: 15-30 seconds for best results
             </p>
           </div>
         )}
@@ -396,122 +431,145 @@ export default function RecordPage() {
   );
 }
 
-function WaveVisualization({ isActive }: { isActive: boolean }) {
+// --- Live Waveform Visualization (Web Audio API AnalyserNode) ---
+function LiveWaveVisualization({ isActive, analyser, progressRatio }: {
+  isActive: boolean;
+  analyser: AnalyserNode | null;
+  progressRatio: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>(0);
+  const [frequencyData, setFrequencyData] = useState<number[]>(new Array(32).fill(0));
+
+  useEffect(() => {
+    if (!isActive || !analyser) {
+      return;
+    }
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const animate = () => {
+      analyser.getByteFrequencyData(dataArray);
+
+      // Extract 32 evenly-spaced bins
+      const bars = 32;
+      const step = Math.floor(bufferLength / bars);
+      const newData: number[] = [];
+      for (let i = 0; i < bars; i++) {
+        newData.push(dataArray[i * step] / 255);
+      }
+      setFrequencyData(newData);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [isActive, analyser]);
+
+  // Draw using canvas for smooth rendering
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const size = 320;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
+
+    const centerX = size / 2;
+    const centerY = size / 2;
+
+    ctx.clearRect(0, 0, size, size);
+
+    // Outer pulsing glow circle
+    const gradient = ctx.createRadialGradient(centerX, centerY, 40, centerX, centerY, 140);
+    gradient.addColorStop(0, `${colors.emeraldGreen}40`);
+    gradient.addColorStop(0.7, `${colors.emeraldGreen}15`);
+    gradient.addColorStop(1, `${colors.emeraldGreen}00`);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 140, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner glow
+    const innerGradient = ctx.createRadialGradient(centerX, centerY, 30, centerX, centerY, 100);
+    innerGradient.addColorStop(0, `${colors.emeraldGreen}50`);
+    innerGradient.addColorStop(0.5, `${colors.emeraldGreen}20`);
+    innerGradient.addColorStop(1, `${colors.emeraldGreen}08`);
+    ctx.fillStyle = innerGradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 100, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Progress ring (15s minimum visual indicator)
+    if (progressRatio > 0) {
+      const ringRadius = 130;
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (2 * Math.PI * progressRatio);
+
+      // Background ring
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = `${colors.emeraldGreen}15`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Progress arc — amber while counting down, fades to emerald when done
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, ringRadius, startAngle, endAngle);
+      const ringColor = progressRatio >= 1 ? colors.emeraldGreen : '#F59E0B';
+      const ringOpacity = progressRatio >= 1 ? '50' : 'CC';
+      ctx.strokeStyle = `${ringColor}${ringOpacity}`;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Radial frequency bars
+    const barCount = frequencyData.length;
+    const baseRadius = 70;
+
+    for (let i = 0; i < barCount; i++) {
+      const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
+      const value = frequencyData[i];
+      const barLength = 8 + value * 35;
+
+      const startX = centerX + Math.cos(angle) * baseRadius;
+      const startY = centerY + Math.sin(angle) * baseRadius;
+      const endX = centerX + Math.cos(angle) * (baseRadius + barLength);
+      const endY = centerY + Math.sin(angle) * (baseRadius + barLength);
+
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = `${colors.emeraldGreen}${Math.round((0.4 + value * 0.6) * 255).toString(16).padStart(2, '0')}`;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Static ring outlines (decorative)
+    [85, 110].forEach((r, i) => {
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `${colors.emeraldGreen}${i === 0 ? '30' : '18'}`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+  }, [frequencyData, progressRatio]);
+
   return (
     <div className="relative w-80 h-80">
-      <svg viewBox="0 0 200 200" className="w-full h-full">
-        <defs>
-          <radialGradient id="waveGradientOuter" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={colors.emeraldGreen} stopOpacity="0.4" />
-            <stop offset="70%" stopColor={colors.emeraldGreen} stopOpacity="0.2" />
-            <stop offset="100%" stopColor={colors.emeraldGreen} stopOpacity="0" />
-          </radialGradient>
-
-          <radialGradient id="waveGradientInner" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={colors.emeraldGreen} stopOpacity="0.6" />
-            <stop offset="50%" stopColor={colors.emeraldGreen} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={colors.emeraldGreen} stopOpacity="0.1" />
-          </radialGradient>
-
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-
-        <circle
-          cx="100"
-          cy="100"
-          r="85"
-          fill="url(#waveGradientOuter)"
-          className={`transition-all duration-1000 ${isActive ? 'animate-pulse' : ''}`}
-          style={{ animationDuration: '2s' }}
-        />
-
-        <circle
-          cx="100"
-          cy="100"
-          r="65"
-          fill="url(#waveGradientInner)"
-          className={`transition-all duration-1000 ${isActive ? 'animate-pulse' : ''}`}
-          style={{ animationDuration: '1.5s' }}
-        />
-
-        <circle
-          cx="100"
-          cy="100"
-          r="75"
-          fill="none"
-          stroke={colors.emeraldGreen}
-          strokeWidth="1.5"
-          opacity="0.4"
-          className={isActive ? 'animate-ping' : ''}
-          style={{ animationDuration: '2.5s' }}
-        />
-
-        <circle
-          cx="100"
-          cy="100"
-          r="60"
-          fill="none"
-          stroke={colors.emeraldGreen}
-          strokeWidth="1.5"
-          opacity="0.5"
-          className={isActive ? 'animate-ping' : ''}
-          style={{ animationDuration: '2s', animationDelay: '0.3s' }}
-        />
-
-        <circle
-          cx="100"
-          cy="100"
-          r="45"
-          fill="none"
-          stroke={colors.emeraldGreen}
-          strokeWidth="2"
-          opacity="0.6"
-          filter="url(#glow)"
-          className={isActive ? 'animate-ping' : ''}
-          style={{ animationDuration: '1.5s', animationDelay: '0.5s' }}
-        />
-
-        {isActive && (
-          <>
-            {[...Array(12)].map((_, i) => {
-              const angle = (i * 30 * Math.PI) / 180;
-              const baseRadius = 48;
-              // Use deterministic values based on index instead of Math.random()
-              const barLength = 8 + ((i * 7) % 5);
-              const startX = 100 + Math.cos(angle) * baseRadius;
-              const startY = 100 + Math.sin(angle) * baseRadius;
-              const endX = 100 + Math.cos(angle) * (baseRadius + barLength);
-              const endY = 100 + Math.sin(angle) * (baseRadius + barLength);
-
-              return (
-                <line
-                  key={i}
-                  x1={startX}
-                  y1={startY}
-                  x2={endX}
-                  y2={endY}
-                  stroke={colors.emeraldGreen}
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  opacity="0.8"
-                  filter="url(#glow)"
-                  className="animate-pulse"
-                  style={{
-                    animationDuration: `${0.8 + ((i * 3) % 5) * 0.1}s`,
-                    animationDelay: `${i * 0.08}s`
-                  }}
-                />
-              );
-            })}
-          </>
-        )}
-      </svg>
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full"
+        style={{ width: 320, height: 320 }}
+      />
     </div>
   );
 }
