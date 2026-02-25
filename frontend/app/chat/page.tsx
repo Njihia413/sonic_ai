@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown, Square } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown, Square, ChevronDown } from 'lucide-react';
 import { BounceLoader } from 'react-spinners';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { colors } from '@/lib/colors';
 
+const MAX_CHARS = 500;
+
 interface VoiceOption {
   value: string;
   label: string;
@@ -19,6 +21,239 @@ interface VoiceOption {
 interface ApiVoice {
   id: string;
   name: string;
+}
+
+// --- Audio Waveform Visualization Component ---
+function AudioWaveform({ audioUrl, isPlaying, onPlayPause }: {
+  audioUrl: string;
+  isPlaying: boolean;
+  onPlayPause: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceCreatedRef = useRef(false);
+  const animationRef = useRef<number>(0);
+  const [waveformData, setWaveformData] = useState<number[]>([]);
+  const [liveFrequency, setLiveFrequency] = useState<number[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  // Decode audio and extract static waveform data
+  useEffect(() => {
+    const decodeAudio = async () => {
+      try {
+        const response = await fetch(audioUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioContext = new AudioContext();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const channelData = audioBuffer.getChannelData(0);
+
+        const barCount = 60;
+        const samplesPerBar = Math.floor(channelData.length / barCount);
+        const bars: number[] = [];
+        for (let i = 0; i < barCount; i++) {
+          let sum = 0;
+          for (let j = 0; j < samplesPerBar; j++) {
+            sum += Math.abs(channelData[i * samplesPerBar + j]);
+          }
+          bars.push(sum / samplesPerBar);
+        }
+
+        const maxVal = Math.max(...bars);
+        const normalized = bars.map(b => (maxVal > 0 ? b / maxVal : 0));
+        setWaveformData(normalized);
+        setDuration(audioBuffer.duration);
+        audioContext.close();
+      } catch (err) {
+        console.error('Failed to decode audio for waveform:', err);
+      }
+    };
+    decodeAudio();
+  }, [audioUrl]);
+
+  // Create audio element + AnalyserNode
+  useEffect(() => {
+    const audio = new Audio(audioUrl);
+    audio.crossOrigin = 'anonymous';
+    audioRef.current = audio;
+    sourceCreatedRef.current = false;
+
+    audio.addEventListener('ended', () => {
+      setProgress(0);
+      setCurrentTime(0);
+      setLiveFrequency([]);
+      onPlayPause();
+    });
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+        analyserRef.current = null;
+        sourceCreatedRef.current = false;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUrl]);
+
+  // Play / pause with live frequency animation
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      // Connect AnalyserNode on first play
+      if (!sourceCreatedRef.current) {
+        try {
+          const ctx = new AudioContext();
+          const source = ctx.createMediaElementSource(audio);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 128;
+          source.connect(analyser);
+          analyser.connect(ctx.destination);
+          audioCtxRef.current = ctx;
+          analyserRef.current = analyser;
+          sourceCreatedRef.current = true;
+        } catch (err) {
+          console.error('Failed to create AnalyserNode:', err);
+        }
+      }
+
+      audio.play().catch(() => {});
+
+      const animate = () => {
+        if (audio.duration) {
+          setProgress(audio.currentTime / audio.duration);
+          setCurrentTime(audio.currentTime);
+        }
+
+        // Get live frequency data
+        const analyser = analyserRef.current;
+        if (analyser) {
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(dataArray);
+          // Downsample to 60 bars to match waveform
+          const barCount = 60;
+          const step = Math.max(1, Math.floor(dataArray.length / barCount));
+          const bars: number[] = [];
+          for (let i = 0; i < barCount; i++) {
+            const idx = Math.min(i * step, dataArray.length - 1);
+            bars.push(dataArray[idx] / 255);
+          }
+          setLiveFrequency(bars);
+        }
+
+        animationRef.current = requestAnimationFrame(animate);
+      };
+      animationRef.current = requestAnimationFrame(animate);
+    } else {
+      audio.pause();
+      cancelAnimationFrame(animationRef.current);
+      setLiveFrequency([]);
+    }
+
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [isPlaying]);
+
+  // Draw the waveform — live frequency when playing, static when paused
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || waveformData.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const barCount = waveformData.length;
+    const barWidth = rect.width / barCount;
+    const gap = 1.5;
+    const maxHeight = rect.height * 0.85;
+
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    const hasLive = liveFrequency.length > 0;
+
+    waveformData.forEach((staticVal, i) => {
+      // During playback, blend live frequency into bar height
+      const liveVal = hasLive ? (liveFrequency[i] ?? 0) : 0;
+      const barHeight = hasLive
+        ? Math.max(3, (staticVal * 0.3 + liveVal * 0.7) * maxHeight)
+        : Math.max(3, staticVal * maxHeight);
+
+      const x = i * barWidth + gap / 2;
+      const y = (rect.height - barHeight) / 2;
+      const barProgress = i / barCount;
+
+      ctx.fillStyle = barProgress <= progress
+        ? colors.emeraldGreen
+        : 'rgba(156, 163, 175, 0.4)';
+
+      ctx.beginPath();
+      ctx.roundRect(x, y, barWidth - gap, barHeight, 2);
+      ctx.fill();
+    });
+  }, [waveformData, progress, liveFrequency]);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const audio = audioRef.current;
+    if (!canvas || !audio || !duration) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const seekRatio = clickX / rect.width;
+    audio.currentTime = seekRatio * duration;
+    setProgress(seekRatio);
+    setCurrentTime(audio.currentTime);
+  };
+
+  return (
+    <div className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-[#121212]">
+      <button
+        onClick={onPlayPause}
+        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+        style={{ color: colors.emeraldGreen }}
+      >
+        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+      </button>
+      <div className="flex-1 flex flex-col gap-1 min-w-0">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-8 cursor-pointer rounded"
+          onClick={handleCanvasClick}
+        />
+        <div className="flex justify-between text-[10px] text-gray-500 dark:text-gray-400 px-0.5">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+      <a
+        href={audioUrl}
+        download="response.wav"
+        onClick={() => toast.success('Audio file downloaded successfully!')}
+        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+        style={{ color: colors.emeraldGreen }}
+      >
+        <Download className="w-5 h-5" />
+      </a>
+    </div>
+  );
 }
 
 export default function ChatPage() {
@@ -32,11 +267,41 @@ export default function ChatPage() {
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const [playingAudio, setPlayingAudio] = useState<number | null>(null);
   const [, setCopiedIndex] = useState<number | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fullText = "Hello, I'm Sonic AI. How may I help you today?";
 
   const [voices, setVoices] = useState<Array<{ value: string; label: string }>>([]);
+
+  // --- Auto-Scroll Logic ---
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
+
+  // Auto-scroll when new messages arrive
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, scrollToBottom]);
+
+  // Show/hide scroll-to-bottom button
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [messages.length]);
 
   useEffect(() => {
     const fetchAndSetVoices = async () => {
@@ -96,7 +361,6 @@ export default function ChatPage() {
 
   const handleFileUpload = () => {
      // This function is for manual attachment, which we are not focusing on now.
-     // We can leave it as is or expand it later if needed.
   };
 
   const handleAttachmentClick = () => {
@@ -139,6 +403,11 @@ export default function ChatPage() {
       return;
     }
 
+    if (message.length > MAX_CHARS) {
+      toast.error(`Message exceeds ${MAX_CHARS} character limit.`);
+      return;
+    }
+
     const userMessage = {
       role: 'user' as const,
       content: message,
@@ -166,7 +435,6 @@ export default function ChatPage() {
       const formData = new FormData();
       formData.append('text', textToSynthesize);
       formData.append('voice_id', selectedVoice);
-      // Language is hardcoded to 'en' for now, as in the backend default.
       formData.append('language', 'en');
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/generate`, {
@@ -224,6 +492,10 @@ export default function ChatPage() {
     }
   };
 
+  const charCount = message.length;
+  const isOverLimit = charCount > MAX_CHARS;
+  const isNearLimit = charCount > MAX_CHARS * 0.8;
+
   const renderChatInput = () => (
     <div className="relative">
       <div
@@ -262,7 +534,7 @@ export default function ChatPage() {
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Ask me anything..."
-            className="min-h-[24px] max-h-[150px] resize-none border-0 p-0 pb-10 bg-transparent text-black dark:text-white placeholder:text-gray-500 placeholder:text-left focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
+            className="min-h-[24px] max-h-[150px] resize-none border-0 border-none shadow-none rounded-none p-0 pb-10 bg-transparent dark:bg-transparent text-black dark:text-white placeholder:text-gray-500 placeholder:text-left focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none leading-6"
           />
           <div className="absolute bottom-4 left-4 flex items-center gap-2">
             <input
@@ -294,6 +566,21 @@ export default function ChatPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Character Counter */}
+            {charCount > 0 && (
+              <span
+                className="text-xs font-medium transition-colors ml-1"
+                style={{
+                  color: isOverLimit
+                    ? '#EF4444'
+                    : isNearLimit
+                    ? '#F59E0B'
+                    : 'rgb(156, 163, 175)',
+                }}
+              >
+                {charCount} / {MAX_CHARS}
+              </span>
+            )}
           </div>
         </div>
         <div className="absolute right-2 bottom-2 flex items-center gap-2">
@@ -313,7 +600,7 @@ export default function ChatPage() {
           </Tooltip>
           <Button
             onClick={isLoading || typingMessageIndex !== null ? handleStop : handleSend}
-            disabled={!isLoading && typingMessageIndex === null && !message.trim() && !audioFile}
+            disabled={!isLoading && typingMessageIndex === null && (!message.trim() || isOverLimit) && !audioFile}
             size="icon"
             className="rounded-full h-[38px] w-[38px] shrink-0 transition-all duration-300 disabled:opacity-50"
             style={{
@@ -346,7 +633,7 @@ export default function ChatPage() {
         </div>
       ) : (
         <>
-          <div className="flex-1 p-4 overflow-y-auto">
+          <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto relative">
             <div className="w-full max-w-3xl mx-auto space-y-4">
               {messages.map((msg, index) => (
                 <div
@@ -381,37 +668,13 @@ export default function ChatPage() {
                             {msg.content}{msg.isTyping && <span className="animate-pulse ml-0.5">|</span>}
                           </div>
                           {!msg.isTyping && (
-                            <div className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-[#121212]">
-                              <button
-                                onClick={() => {
-                                  if (playingAudio === index) {
-                                    // Logic to pause audio
-                                    setPlayingAudio(null);
-                                  } else {
-                                    const audio = new Audio(msg.audioResponse!.url);
-                                    audio.play();
-                                    setPlayingAudio(index);
-                                    audio.onended = () => setPlayingAudio(null);
-                                  }
-                                }}
-                                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                style={{ color: colors.emeraldGreen }}
-                              >
-                                {playingAudio === index ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                              </button>
-                              <div className="flex-1 h-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                                <div className="h-full rounded-full" style={{ width: '0%', backgroundColor: colors.emeraldGreen }}></div>
-                              </div>
-                              <a
-                                 href={msg.audioResponse.url}
-                                 download="response.wav"
-                                 onClick={() => toast.success('Audio file downloaded successfully!')}
-                                 className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                 style={{ color: colors.emeraldGreen }}
-                               >
-                                 <Download className="w-5 h-5" />
-                               </a>
-                            </div>
+                            <AudioWaveform
+                              audioUrl={msg.audioResponse.url}
+                              isPlaying={playingAudio === index}
+                              onPlayPause={() => {
+                                setPlayingAudio(prev => prev === index ? null : index);
+                              }}
+                            />
                           )}
                         </div>
                       ) : (
@@ -475,7 +738,22 @@ export default function ChatPage() {
                   />
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
+
+            {/* Scroll to Bottom Button */}
+            {showScrollButton && (
+              <button
+                onClick={() => scrollToBottom()}
+                className="fixed bottom-28 right-8 z-50 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+                style={{
+                  backgroundColor: colors.emeraldGreen,
+                  color: colors.white,
+                }}
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           <div className="bg-white dark:bg-black">
