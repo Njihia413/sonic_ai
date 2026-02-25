@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Navbar } from '@/components/navbar';
 import { CreateVoiceModal } from '@/components/create-voice-modal';
 import { colors } from '@/lib/colors';
@@ -70,7 +71,12 @@ export default function HomePage() {
       <Navbar />
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <section className="mb-12 sm:mb-16">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-12 sm:mb-16"
+        >
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
             <span className="text-black dark:text-white">Unleash Your </span>
             <span style={{ color: colors.emeraldGreen }}>Creativity</span>
@@ -79,7 +85,7 @@ export default function HomePage() {
           <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
             <span style={{ color: colors.emeraldGreen }}>Transform</span> text into voice with ease
           </p>
-        </section>
+        </motion.section>
 
         <section className="mb-12 sm:mb-16">
           <div className="flex items-center justify-between mb-6 sm:mb-8">
@@ -110,7 +116,18 @@ export default function HomePage() {
               />
             </div>
           ) : voices.length === 0 ? (
-            <div className="text-center text-gray-500 dark:text-gray-400">No voices found. Create one!</div>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center text-gray-500 dark:text-gray-400 py-12 flex flex-col items-center justify-center space-y-4"
+            >
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-20 text-gray-400">
+                <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z"/>
+                <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12"/>
+                <path d="M12 20V23M12 23H15M12 23H9"/>
+              </svg>
+              <p>No voices found. Create one!</p>
+            </motion.div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {voices.map((voice) => (
@@ -120,7 +137,11 @@ export default function HomePage() {
           )}
         </section>
 
-        <section>
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           <div className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-white">
               Get Started
@@ -190,7 +211,7 @@ export default function HomePage() {
               </div>
             </Link>
           </div>
-        </section>
+        </motion.section>
       </main>
 
       <CreateVoiceModal open={showCreateModal} onOpenChange={setShowCreateModal} />
