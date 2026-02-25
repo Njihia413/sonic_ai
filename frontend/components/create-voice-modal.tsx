@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Upload, X } from 'lucide-react';
+import { Mic, Upload, X, Play, Pause } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,10 +26,43 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [voiceName, setVoiceName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [previewProgress, setPreviewProgress] = useState(0);
+  const [previewDuration, setPreviewDuration] = useState(0);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewAnimRef = useRef<number>(0);
 
   const handleRecordClick = () => {
     onOpenChange(false);
     router.push('/record');
+  };
+
+  // Clean up preview audio on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current.src = '';
+      }
+      cancelAnimationFrame(previewAnimRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cleanupPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.src = '';
+      previewAudioRef.current = null;
+    }
+    cancelAnimationFrame(previewAnimRef.current);
+    setPreviewUrl(null);
+    setIsPreviewPlaying(false);
+    setPreviewProgress(0);
+    setPreviewDuration(0);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,8 +81,53 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
         return;
       }
 
+      // Clean up old preview
+      cleanupPreview();
+
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
       setSelectedFile(file);
+
+      // Set up audio element for preview
+      const audio = new Audio(url);
+      previewAudioRef.current = audio;
+      audio.addEventListener('loadedmetadata', () => {
+        setPreviewDuration(audio.duration);
+      });
+      audio.addEventListener('ended', () => {
+        setIsPreviewPlaying(false);
+        setPreviewProgress(0);
+        cancelAnimationFrame(previewAnimRef.current);
+      });
     }
+  };
+
+  const togglePreview = () => {
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+
+    if (isPreviewPlaying) {
+      audio.pause();
+      cancelAnimationFrame(previewAnimRef.current);
+      setIsPreviewPlaying(false);
+    } else {
+      audio.play().catch(() => {});
+      setIsPreviewPlaying(true);
+
+      const updateProgress = () => {
+        if (audio.duration) {
+          setPreviewProgress(audio.currentTime / audio.duration);
+        }
+        previewAnimRef.current = requestAnimationFrame(updateProgress);
+      };
+      previewAnimRef.current = requestAnimationFrame(updateProgress);
+    }
+  };
+
+  const formatPreviewTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   const handleUpload = async () => {
@@ -107,6 +185,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
     setSelectedOption(null);
     setSelectedFile(null);
     setVoiceName('');
+    cleanupPreview();
   };
 
   return (
@@ -176,7 +255,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                 You&apos;ll be redirected to the recording page where you can record your voice sample.
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-500">
-                Recommended: 5-30 seconds
+                Recommended: 15-30 seconds
               </p>
             </div>
             <div className="flex gap-3">
@@ -220,7 +299,7 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                     Click to upload or drag and drop
                   </p>
                   <p className="text-sm text-center text-gray-500 dark:text-gray-500">
-                    MP3, WAV, OGG, or M4A (5-30 seconds recommended)
+                    MP3, WAV, OGG, or M4A (10-30 seconds recommended)
                   </p>
                   <input
                     type="file"
@@ -230,29 +309,68 @@ export function CreateVoiceModal({ open, onOpenChange }: CreateVoiceModalProps) 
                   />
                 </label>
               ) : (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${colors.emeraldGreen}20` }}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: `${colors.emeraldGreen}20` }}
+                      >
+                        <Upload className="w-5 h-5" style={{ color: colors.emeraldGreen }} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm text-black dark:text-white">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          {previewDuration > 0 && (
+                            <>
+                              {' · '}
+                              <span style={{
+                                color: previewDuration < 10 ? '#EF4444' : colors.emeraldGreen
+                              }}>
+                                {previewDuration.toFixed(1)}s
+                              </span>
+                              {previewDuration < 10 && (
+                                <span className="text-red-500"> (too short)</span>
+                              )}
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedFile(null); cleanupPreview(); }}
+                      className="p-2 rounded-full transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
-                      <Upload className="w-5 h-5" style={{ color: colors.emeraldGreen }} />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm text-black dark:text-white">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setSelectedFile(null)}
-                    className="p-2 rounded-full transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
-                  >
-                    <X className="w-4 h-4 text-gray-500" />
-                  </button>
+                  {/* Audio Preview Player */}
+                  {previewUrl && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-[#121212]">
+                      <button
+                        onClick={togglePreview}
+                        className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+                        style={{ color: colors.emeraldGreen }}
+                      >
+                        {isPreviewPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      </button>
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-100"
+                          style={{
+                            width: `${previewProgress * 100}%`,
+                            backgroundColor: colors.emeraldGreen,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono shrink-0">
+                        {formatPreviewTime(previewDuration)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
