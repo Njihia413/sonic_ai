@@ -7,7 +7,8 @@ import { colors } from '@/lib/colors';
 import { toast } from 'sonner';
 import { BounceLoader } from 'react-spinners';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Play } from 'lucide-react';
+import { Play, MessageSquare, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface Voice {
   id: string;
@@ -122,45 +123,72 @@ export default function HomePage() {
         <section>
           <div className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-white">
-              Create Voice
+              Get Started
             </h2>
           </div>
 
-          <div className="bg-gray-100 dark:bg-[#202020] rounded-2xl p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-8">
-              <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl bg-gray-200 dark:bg-[#121212] flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="w-12 h-12 sm:w-14 sm:h-14">
-                  <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" fill={colors.emeraldGreen} stroke={colors.emeraldGreen} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 20V23M12 23H15M12 23H9" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            <div 
+              onClick={() => setShowCreateModal(true)}
+              className="group cursor-pointer bg-gray-100 dark:bg-[#202020] border-2 border-transparent hover:border-gray-200 dark:hover:border-[#2a2a2a] rounded-3xl p-6 sm:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+            >
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
+                style={{ background: `radial-gradient(circle at top right, ${colors.emeraldGreen}, transparent 60%)` }}
+              />
+
+              <div className="flex items-start justify-between mb-8 sm:mb-12 relative z-10">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white dark:bg-[#121212] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-7 h-7 sm:w-8 sm:h-8">
+                    <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" fill={colors.emeraldGreen} stroke={colors.emeraldGreen} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 20V23M12 23H15M12 23H9" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-4 transition-all duration-300">
+                  <ArrowRight className="w-5 h-5" style={{ color: colors.emeraldGreen }} />
+                </div>
               </div>
 
-              <div className="flex-1 flex flex-col justify-center w-full lg:w-auto">
-                <h3 className="text-xl sm:text-2xl font-semibold mb-2">
+              <div className="mt-auto relative z-10">
+                <h3 className="text-xl sm:text-2xl font-bold mb-2">
                   <span className="text-black dark:text-white">Voice </span>
                   <span style={{ color: colors.emeraldGreen }}>Creation</span>
                 </h3>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 max-w-xl">
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                   Generate personalized AI voices from text.
                 </p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="w-full lg:w-auto px-8 py-2.5 rounded-full text-white font-medium transition-all self-start hover:bg-transparent border-2 hover:border-2 cursor-pointer"
-                  style={{ backgroundColor: colors.emeraldGreen, borderColor: colors.emeraldGreen }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = colors.emeraldGreen;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = colors.emeraldGreen;
-                    e.currentTarget.style.color = 'white';
-                  }}
-                >
-                  Create Voice
-                </button>
               </div>
             </div>
+
+            <Link 
+              href="/chat"
+              className="group cursor-pointer bg-gray-100 dark:bg-[#202020] border-2 border-transparent hover:border-gray-200 dark:hover:border-[#2a2a2a] rounded-3xl p-6 sm:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+            >
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
+                style={{ background: `radial-gradient(circle at top right, ${colors.emeraldGreen}, transparent 60%)` }}
+              />
+
+              <div className="flex items-start justify-between mb-8 sm:mb-12 relative z-10">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white dark:bg-[#121212] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
+                  <MessageSquare className="w-7 h-7 sm:w-8 sm:h-8" color={colors.emeraldGreen} strokeWidth={2} />
+                </div>
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-4 transition-all duration-300">
+                  <ArrowRight className="w-5 h-5" style={{ color: colors.emeraldGreen }} />
+                </div>
+              </div>
+
+              <div className="mt-auto relative z-10">
+                <h3 className="text-xl sm:text-2xl font-bold mb-2">
+                  <span className="text-black dark:text-white">Start </span>
+                  <span style={{ color: colors.emeraldGreen }}>Chatting</span>
+                </h3>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                  Jump straight into conversation with your cloned voices.
+                </p>
+              </div>
+            </Link>
           </div>
         </section>
       </main>
