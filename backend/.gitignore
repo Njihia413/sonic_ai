@@ -1,6 +1,7 @@
 # Project-specific persisted data (never commit these)
 voices/
 tts_models/
+hf-cache/
 
 # macOS
 .DS_Store
