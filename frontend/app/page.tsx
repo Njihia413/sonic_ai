@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { LoginForm } from '@/components/auth/login-form';
 import { SignUpForm } from '@/components/auth/signup-form';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -21,40 +22,81 @@ export default function Home() {
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="flex flex-col items-center space-y-8 max-w-2xl w-full">
             <div className="text-center space-y-3">
-              <h1 className="text-5xl md:text-7xl font-semibold tracking-tight">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="text-5xl md:text-7xl font-semibold tracking-tight"
+              >
                 <span className="dark:text-white text-black">Sonic</span>
                 <span style={{ color: colors.emeraldGreen }}>AI</span>
-              </h1>
-              <p className="text-gray-700 dark:text-gray-300 text-base md:text-lg font-light tracking-wide">
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                className="text-gray-700 dark:text-gray-300 text-base md:text-lg font-light tracking-wide"
+              >
                 Bringing Your Words to Life
-              </p>
+              </motion.p>
             </div>
 
-            <div className="flex items-center gap-1.5 md:gap-2 mt-12">
-              <div className="w-1 h-8 md:w-1.5 md:h-12 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '0ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-12 md:w-1.5 md:h-16 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '100ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-6 md:w-1.5 md:h-10 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '200ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-14 md:w-1.5 md:h-20 bg-black dark:bg-white rounded-full animate-pulse" style={{ animationDelay: '300ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-8 md:w-1.5 md:h-12 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '350ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-10 md:w-1.5 md:h-14 bg-black dark:bg-white rounded-full animate-pulse" style={{ animationDelay: '400ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-12 md:w-1.5 md:h-16 bg-black dark:bg-white rounded-full animate-pulse" style={{ animationDelay: '450ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-6 md:w-1.5 md:h-10 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '500ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-14 md:w-1.5 md:h-20 bg-black dark:bg-white rounded-full animate-pulse" style={{ animationDelay: '550ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-8 md:w-1.5 md:h-12 bg-black dark:bg-white rounded-full animate-pulse" style={{ animationDelay: '600ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-12 md:w-1.5 md:h-16 rounded-full animate-pulse" style={{ backgroundColor: colors.emeraldGreen, animationDelay: '650ms', animationDuration: '800ms' }}></div>
-              <div className="w-1 h-6 md:w-1.5 md:h-10 bg-black dark:bg-white rounded-full animate-pulse" style={{ animationDelay: '700ms', animationDuration: '800ms' }}></div>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.4 }}
+              className="flex items-center gap-1.5 md:gap-2 mt-12 h-20 md:h-24"
+            >
+              {[...Array(12)].map((_, i) => {
+                const isEmerald = [0, 1, 2, 4, 7, 10].includes(i);
+                // Fixed pseudo-random heights for aesthetic wave feeling
+                const heights = [
+                  ["30%", "60%", "30%"],
+                  ["40%", "80%", "40%"],
+                  ["20%", "50%", "20%"],
+                  ["50%", "100%", "50%"],
+                  ["30%", "70%", "30%"],
+                  ["60%", "90%", "60%"],
+                  ["40%", "100%", "40%"],
+                  ["20%", "60%", "20%"],
+                  ["70%", "100%", "70%"],
+                  ["30%", "80%", "30%"],
+                  ["50%", "90%", "50%"],
+                  ["20%", "60%", "20%"],
+                ][i];
+
+                return (
+                  <motion.div
+                    key={i}
+                    className={`w-1 md:w-1.5 rounded-full ${isEmerald ? '' : 'bg-black dark:bg-white'}`}
+                    style={{
+                      backgroundColor: isEmerald ? colors.emeraldGreen : undefined,
+                    }}
+                    animate={{ height: heights }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: i * 0.1,
+                    }}
+                  />
+                );
+              })}
+            </motion.div>
           </div>
         </div>
 
-        <button
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
           onClick={() => setShowLoginModal(true)}
           className="flex items-center gap-2 font-bold hover:underline group"
           style={{ color: colors.emeraldGreen }}
         >
           Get Started
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-        </button>
+        </motion.button>
       </div>
 
       <LoginForm
