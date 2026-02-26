@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Pause, Play, Check, RotateCcw } from 'lucide-react';
+import { Mic, Pause, Play, Check, RotateCcw, Sparkles, CheckCircle } from 'lucide-react';
 import { colors } from '@/lib/colors';
 import { Navbar } from '@/components/navbar';
 import {
@@ -17,6 +17,10 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const MIN_RECORDING_TIME = 15; // seconds — visual countdown only
+const SILENCE_VOLUME_THRESHOLD = 5; // out of 255 — volume below this = silence
+const SILENCE_CHECK_INTERVAL = 100; // ms between volume checks
+const MAX_SILENCE_DURATION = 3000; // 3s of silence triggers auto-stop (post-15s)
+const KEEP_SPEAKING_DELAY = 1000; // 1s of silence before showing nudge (pre-15s)
 
 const convertToWav = async (webmBlob: Blob): Promise<Blob> => {
   const audioContext = new AudioContext();
@@ -76,6 +80,8 @@ export default function RecordPage() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [voiceName, setVoiceName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
+  const [showKeepSpeaking, setShowKeepSpeaking] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -83,11 +89,17 @@ export default function RecordPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const silenceCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceAccumulatorRef = useRef(0);
+  const recordingTimeRef = useRef(0);
 
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+      }
+      if (silenceCheckIntervalRef.current) {
+        clearInterval(silenceCheckIntervalRef.current);
       }
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -107,8 +119,14 @@ export default function RecordPage() {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       setIsPaused(false);
+      setSilenceCountdown(null);
+      setShowKeepSpeaking(false);
+      silenceAccumulatorRef.current = 0;
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+      }
+      if (silenceCheckIntervalRef.current) {
+        clearInterval(silenceCheckIntervalRef.current);
       }
     }
   }, []);
@@ -154,10 +172,60 @@ export default function RecordPage() {
       mediaRecorder.start();
       setIsRecording(true);
       setIsPaused(false);
+      recordingTimeRef.current = 0;
 
       timerIntervalRef.current = setInterval(() => {
+        recordingTimeRef.current += 1;
         setRecordingTime((prev) => prev + 1);
       }, 1000);
+
+      // --- Silence detection ---
+      silenceAccumulatorRef.current = 0;
+      silenceCheckIntervalRef.current = setInterval(() => {
+        if (!analyserRef.current) return;
+
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        // Average volume across all frequency bins
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const avgVolume = sum / bufferLength;
+
+        if (avgVolume < SILENCE_VOLUME_THRESHOLD) {
+          // Accumulate silence
+          silenceAccumulatorRef.current += SILENCE_CHECK_INTERVAL;
+
+          const currentTime = recordingTimeRef.current;
+
+          if (currentTime < MIN_RECORDING_TIME) {
+            // Pre-15s: show "Keep speaking" nudge after 1s of silence
+            if (silenceAccumulatorRef.current >= KEEP_SPEAKING_DELAY) {
+              setShowKeepSpeaking(true);
+            }
+          } else {
+            // Post-15s: show countdown and auto-stop after 3s
+            setShowKeepSpeaking(false);
+            if (silenceAccumulatorRef.current >= MAX_SILENCE_DURATION) {
+              // Auto-stop!
+              setSilenceCountdown(null);
+              stopRecording();
+            } else if (silenceAccumulatorRef.current >= 1000) {
+              // Show countdown after 1s of silence
+              const remaining = Math.ceil((MAX_SILENCE_DURATION - silenceAccumulatorRef.current) / 1000);
+              setSilenceCountdown(remaining);
+            }
+          }
+        } else {
+          // Sound detected — reset everything
+          silenceAccumulatorRef.current = 0;
+          setSilenceCountdown(null);
+          setShowKeepSpeaking(false);
+        }
+      }, SILENCE_CHECK_INTERVAL);
     } catch (error) {
       console.error('Error accessing microphone:', error);
       alert('Could not access microphone. Please ensure you have granted permission.');
@@ -168,8 +236,14 @@ export default function RecordPage() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.pause();
       setIsPaused(true);
+      setSilenceCountdown(null);
+      setShowKeepSpeaking(false);
+      silenceAccumulatorRef.current = 0;
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+      }
+      if (silenceCheckIntervalRef.current) {
+        clearInterval(silenceCheckIntervalRef.current);
       }
     }
   };
@@ -178,19 +252,68 @@ export default function RecordPage() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
       mediaRecorderRef.current.resume();
       setIsPaused(false);
+      silenceAccumulatorRef.current = 0;
+
       timerIntervalRef.current = setInterval(() => {
+        recordingTimeRef.current += 1;
         setRecordingTime((prev) => prev + 1);
       }, 1000);
+
+      // Restart silence detection
+      silenceCheckIntervalRef.current = setInterval(() => {
+        if (!analyserRef.current) return;
+
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const avgVolume = sum / bufferLength;
+
+        if (avgVolume < SILENCE_VOLUME_THRESHOLD) {
+          silenceAccumulatorRef.current += SILENCE_CHECK_INTERVAL;
+          const currentTime = recordingTimeRef.current;
+
+          if (currentTime < MIN_RECORDING_TIME) {
+            if (silenceAccumulatorRef.current >= KEEP_SPEAKING_DELAY) {
+              setShowKeepSpeaking(true);
+            }
+          } else {
+            setShowKeepSpeaking(false);
+            if (silenceAccumulatorRef.current >= MAX_SILENCE_DURATION) {
+              setSilenceCountdown(null);
+              stopRecording();
+            } else if (silenceAccumulatorRef.current >= 1000) {
+              const remaining = Math.ceil((MAX_SILENCE_DURATION - silenceAccumulatorRef.current) / 1000);
+              setSilenceCountdown(remaining);
+            }
+          }
+        } else {
+          silenceAccumulatorRef.current = 0;
+          setSilenceCountdown(null);
+          setShowKeepSpeaking(false);
+        }
+      }, SILENCE_CHECK_INTERVAL);
     }
   };
 
   const retryRecording = () => {
     setAudioBlob(null);
     setRecordingTime(0);
+    recordingTimeRef.current = 0;
     setIsRecording(false);
     setIsPaused(false);
+    setSilenceCountdown(null);
+    setShowKeepSpeaking(false);
+    silenceAccumulatorRef.current = 0;
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
+    }
+    if (silenceCheckIntervalRef.current) {
+      clearInterval(silenceCheckIntervalRef.current);
     }
   };
 
@@ -359,9 +482,42 @@ export default function RecordPage() {
 
         {isRecording && (
           <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Recommended: 15-30 seconds for best results
-            </p>
+            {showKeepSpeaking ? (
+              <p className="text-sm text-amber-500 animate-pulse font-medium">
+                Keep speaking…
+              </p>
+            ) : silenceCountdown !== null ? (
+              <p className="text-sm text-amber-500 font-medium">
+                Auto-stopping in {silenceCountdown}s…
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Recommended: 15-30 seconds for best results
+              </p>
+            )}
+          </div>
+        )}
+
+        {!isRecording && !audioBlob && (
+          <div className="mt-10 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-white/3 backdrop-blur-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4" style={{ color: colors.emeraldGreen }} />
+              <span className="text-sm font-semibold text-black dark:text-white">Tips for the best voice clone</span>
+            </div>
+            <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: colors.emeraldGreen }} />
+                <span>Speak <strong className="text-black dark:text-white">continuously</strong>, pauses and silence will be trimmed</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: colors.emeraldGreen }} />
+                <span>Use your <strong className="text-black dark:text-white">natural tone</strong> eg read a paragraph or describe your day</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: colors.emeraldGreen }} />
+                <span>Aim for <strong className="text-black dark:text-white">15–30 seconds</strong> of uninterrupted speech</span>
+              </li>
+            </ul>
           </div>
         )}
       </div>
