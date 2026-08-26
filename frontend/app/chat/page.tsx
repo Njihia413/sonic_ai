@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown, Square, ChevronDown } from 'lucide-react';
+import { ArrowUp, Mic, Volume2, X, Paperclip, Download, Play, Pause, Copy, ThumbsUp, ThumbsDown, Square, ChevronDown, ShieldX } from 'lucide-react';
 import { BounceLoader } from 'react-spinners';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,14 @@ import { Navbar } from '@/components/navbar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { colors } from '@/lib/colors';
+import { logout } from '@/lib/auth';
+import { motion } from 'framer-motion';
+
+type AccessState =
+  | { status: 'checking' }
+  | { status: 'granted' }
+  | { status: 'denied'; message: string }
+  | { status: 'error'; message: string }
 
 const MAX_CHARS = 500;
 
@@ -226,6 +234,7 @@ function AudioWaveform({ audioUrl, isPlaying, onPlayPause }: {
   return (
     <div className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-[#121212]">
       <button
+        type="button"
         onClick={onPlayPause}
         className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
         style={{ color: colors.emeraldGreen }}
@@ -257,6 +266,7 @@ function AudioWaveform({ audioUrl, isPlaying, onPlayPause }: {
 }
 
 export default function ChatPage() {
+  const [access, setAccess] = useState<AccessState>({ status: 'checking' })
   const [message, setMessage] = useState('');
   const [audioFile, setAudioFile] = useState<{ url: string; name: string; id: string } | null>(null);
   const [selectedVoice, setSelectedVoice] = useState<string | undefined>(undefined);
@@ -275,6 +285,30 @@ export default function ChatPage() {
   const fullText = "Hello, I'm Sonic AI. How may I help you today?";
 
   const [voices, setVoices] = useState<Array<{ value: string; label: string }>>([]);
+
+  // --- Argus Access Verification ---
+  useEffect(() => {
+    const verify = async () => {
+      try {
+        const res = await fetch('/api/verify', { method: 'POST' })
+        const data = await res.json()
+
+        if (res.status === 401) {
+          window.location.href = '/'
+          return
+        }
+
+        if (data.allowed) {
+          setAccess({ status: 'granted' })
+        } else {
+          setAccess({ status: 'denied', message: data.message || 'Access denied' })
+        }
+      } catch {
+        setAccess({ status: 'error', message: 'Could not verify access. Please try again.' })
+      }
+    }
+    verify()
+  }, [])
 
   // --- Auto-Scroll Logic ---
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -339,8 +373,11 @@ export default function ChatPage() {
       }
     };
 
-    fetchAndSetVoices();
-  }, []);
+    // Only fetch voices once Argus has confirmed access
+    if (access.status === 'granted') {
+      fetchAndSetVoices();
+    }
+  }, [access.status]);
 
 
   useEffect(() => {
@@ -614,6 +651,48 @@ export default function ChatPage() {
       </div>
     </div>
   );
+
+  if (access.status === 'checking') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+        <BounceLoader color={colors.emeraldGreen} size={50} />
+      </div>
+    )
+  }
+
+  if (access.status === 'denied' || access.status === 'error') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="max-w-md w-full"
+          >
+            <div
+              className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+              style={{ backgroundColor: `${colors.emeraldGreen}15` }}
+            >
+              <ShieldX className="w-10 h-10" style={{ color: colors.emeraldGreen }} />
+            </div>
+            <h1 className="text-2xl font-bold text-black dark:text-white mb-3">Access Denied</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-8">
+              {access.message}
+            </p>
+            <button
+              onClick={logout}
+              className="w-full h-12 font-semibold text-sm rounded-full text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: colors.emeraldGreen }}
+            >
+              Log out
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <TooltipProvider>
