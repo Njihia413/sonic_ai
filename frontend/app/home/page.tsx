@@ -41,7 +41,6 @@ export default function HomePage() {
         const data = await res.json()
 
         if (res.status === 401) {
-          // No valid session — send back to login
           window.location.href = '/'
           return
         }
@@ -49,7 +48,7 @@ export default function HomePage() {
         if (data.allowed) {
           setAccess({ status: 'granted' })
         } else {
-          setAccess({ status: 'denied', message: data.message || 'Access denied' })
+          setAccess({ status: 'denied', message: data.error || data.message || 'Access denied' })
         }
       } catch {
         setAccess({ status: 'error', message: 'Could not verify access. Please try again.' })
@@ -80,7 +79,7 @@ export default function HomePage() {
     }
   }, [access.status]);
 
-  const handleDelete = async (voiceId: string) => {
+  const handleDelete = async (voiceId: string): Promise<void> => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices/${voiceId}`, {
         method: 'DELETE',
@@ -171,6 +170,7 @@ export default function HomePage() {
               <span style={{ color: colors.emeraldGreen }}>({voices.length})</span>
             </h2>
             <button
+              type="button"
               onClick={fetchVoices}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80 cursor-pointer"
               style={{ backgroundColor: `${colors.emeraldGreen}30`, color: colors.emeraldGreen }}
@@ -179,11 +179,12 @@ export default function HomePage() {
             </button>
           </div>
 
-          {isLoading ? (
+          {isLoading && (
             <div className="flex justify-center items-center py-10">
               <BounceLoader color={colors.emeraldGreen} loading={isLoading} size={60} />
             </div>
-          ) : voices.length === 0 ? (
+          )}
+          {!isLoading && voices.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -196,7 +197,8 @@ export default function HomePage() {
               </svg>
               <p>No voices found. Create one!</p>
             </motion.div>
-          ) : (
+          )}
+          {!isLoading && voices.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {voices.map((voice) => (
                 <VoiceCard key={voice.id} voice={voice} onDelete={handleDelete} />
@@ -215,9 +217,11 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            <div
+            {/* Voice Creation card — real button for full keyboard/a11y support */}
+            <button
+              type="button"
               onClick={() => setShowCreateModal(true)}
-              className="group cursor-pointer bg-gray-100 dark:bg-[#202020] border-2 border-transparent hover:border-gray-200 dark:hover:border-[#2a2a2a] rounded-3xl p-6 sm:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+              className="group cursor-pointer text-left bg-gray-100 dark:bg-[#202020] border-2 border-transparent hover:border-gray-200 dark:hover:border-[#2a2a2a] rounded-3xl p-6 sm:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
             >
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
@@ -244,7 +248,7 @@ export default function HomePage() {
                   Generate personalized AI voices from text.
                 </p>
               </div>
-            </div>
+            </button>
 
             <Link
               href="/chat"
@@ -281,7 +285,7 @@ export default function HomePage() {
   );
 }
 
-function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: string) => void }) {
+function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: string) => Promise<void> }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteClick = async () => {
@@ -304,6 +308,7 @@ function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: stri
         <div className="mt-auto space-y-3">
           <div className="flex gap-2">
             <button
+              type="button"
               className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer flex items-center justify-center"
               style={{ borderColor: colors.emeraldGreen, color: colors.emeraldGreen }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = colors.emeraldGreen; e.currentTarget.style.color = 'white'; }}
@@ -315,6 +320,7 @@ function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: stri
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
+                  type="button"
                   disabled={isDeleting}
                   className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer disabled:opacity-50"
                   style={{ borderColor: colors.emeraldGreen, color: colors.emeraldGreen }}
