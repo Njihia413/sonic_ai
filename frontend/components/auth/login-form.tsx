@@ -41,6 +41,23 @@ export function LoginForm({ open, onOpenChange }: LoginFormProps) {
       return
     }
 
+    try {
+      const verifyRes = await fetch('/api/verify', { method: 'POST' })
+      const verifyData = await verifyRes.json()
+
+      if (!verifyData.allowed) {
+        await fetch('/api/logout', { method: 'POST' })
+        toast.error(verifyData.error || verifyData.message || 'You do not have access to Sonic AI.')
+        setIsLoading(false)
+        return
+      }
+    } catch {
+      await fetch('/api/logout', { method: 'POST' })
+      toast.error('Could not reach the auth service. Please try again.')
+      setIsLoading(false)
+      return
+    }
+
     toast.success('Logged in successfully')
     setTimeout(() => {
       window.location.href = '/home'
