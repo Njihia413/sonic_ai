@@ -8,30 +8,62 @@ import { colors } from '@/lib/colors';
 import { toast } from 'sonner';
 import { BounceLoader } from 'react-spinners';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Play, MessageSquare, ArrowRight } from 'lucide-react';
+import { Play, MessageSquare, ArrowRight, ShieldX } from 'lucide-react';
 import Link from 'next/link';
+import { logout } from '@/lib/auth';
 
 interface Voice {
   id: string;
   name: string;
-  duration?: number;
-  duration_sec?: number;
   uploaded_at: string;
-  original_filename: string;
+  samples: number;
+  duration: number;
+  has_prompt_text: boolean;
+  has_prompt_wav: boolean;
 }
 
+type AccessState =
+  | { status: 'checking' }
+  | { status: 'granted' }
+  | { status: 'denied'; message: string }
+  | { status: 'error'; message: string }
+
 export default function HomePage() {
+  const [access, setAccess] = useState<AccessState>({ status: 'checking' })
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const verify = async () => {
+      try {
+        const res = await fetch('/api/verify', { method: 'POST' })
+        const data = await res.json()
+
+        if (res.status === 401) {
+          // No valid session — send back to login
+          window.location.href = '/'
+          return
+        }
+
+        if (data.allowed) {
+          setAccess({ status: 'granted' })
+        } else {
+          setAccess({ status: 'denied', message: data.message || 'Access denied' })
+        }
+      } catch {
+        setAccess({ status: 'error', message: 'Could not verify access. Please try again.' })
+      }
+    }
+
+    verify()
+  }, [])
 
   const fetchVoices = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch voices');
-      }
+      if (!response.ok) throw new Error('Failed to fetch voices');
       const data = await response.json();
       setVoices(data.voices || []);
     } catch (error) {
@@ -43,35 +75,80 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    fetchVoices();
-  }, []);
+    if (access.status === 'granted') {
+      fetchVoices();
+    }
+  }, [access.status]);
 
   const handleDelete = async (voiceId: string) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/voices/${voiceId}`, {
         method: 'DELETE',
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to delete voice');
       }
-      
       const result = await response.json();
       toast.success(result.message || 'Voice deleted successfully!');
-      fetchVoices(); // Refresh the list after deletion
+      fetchVoices();
     } catch (error) {
       console.error('Error deleting voice:', error);
       toast.error((error as Error).message || 'An unexpected error occurred.');
     }
   };
 
+  if (access.status === 'checking') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
+        <BounceLoader color={colors.emeraldGreen} size={50} />
+      </div>
+    )
+  }
+
+  if (access.status === 'denied' || access.status === 'error') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="max-w-md w-full"
+          >
+            <div
+              className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+              style={{ backgroundColor: `${colors.emeraldGreen}15` }}
+            >
+              <ShieldX className="w-10 h-10" style={{ color: colors.emeraldGreen }} />
+            </div>
+            <h1 className="text-2xl font-bold text-black dark:text-white mb-3">
+              Access Denied
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-8">
+              {access.message}
+            </p>
+            <button
+              type="button"
+              onClick={logout}
+              className="w-full h-12 font-semibold text-sm rounded-full text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: colors.emeraldGreen }}
+            >
+              Log out
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <Navbar />
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -96,10 +173,7 @@ export default function HomePage() {
             <button
               onClick={fetchVoices}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80 cursor-pointer"
-              style={{
-                backgroundColor: `${colors.emeraldGreen}30`,
-                color: colors.emeraldGreen
-              }}
+              style={{ backgroundColor: `${colors.emeraldGreen}30`, color: colors.emeraldGreen }}
             >
               Refresh
             </button>
@@ -107,24 +181,18 @@ export default function HomePage() {
 
           {isLoading ? (
             <div className="flex justify-center items-center py-10">
-              <BounceLoader
-                color={colors.emeraldGreen}
-                loading={isLoading}
-                size={60}
-                aria-label="Loading Spinner"
-                data-testid="loader"
-              />
+              <BounceLoader color={colors.emeraldGreen} loading={isLoading} size={60} />
             </div>
           ) : voices.length === 0 ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center text-gray-500 dark:text-gray-400 py-12 flex flex-col items-center justify-center space-y-4"
             >
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-20 text-gray-400">
-                <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z"/>
-                <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12"/>
-                <path d="M12 20V23M12 23H15M12 23H9"/>
+                <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" />
+                <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12" />
+                <path d="M12 20V23M12 23H15M12 23H9" />
               </svg>
               <p>No voices found. Create one!</p>
             </motion.div>
@@ -143,34 +211,30 @@ export default function HomePage() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-white">
-              Get Started
-            </h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-white">Get Started</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            <div 
+            <div
               onClick={() => setShowCreateModal(true)}
               className="group cursor-pointer bg-gray-100 dark:bg-[#202020] border-2 border-transparent hover:border-gray-200 dark:hover:border-[#2a2a2a] rounded-3xl p-6 sm:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
             >
-              <div 
+              <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
                 style={{ background: `radial-gradient(circle at top right, ${colors.emeraldGreen}, transparent 60%)` }}
               />
-
               <div className="flex items-start justify-between mb-8 sm:mb-12 relative z-10">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white dark:bg-[#121212] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-7 h-7 sm:w-8 sm:h-8">
-                    <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" fill={colors.emeraldGreen} stroke={colors.emeraldGreen} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 20V23M12 23H15M12 23H9" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15Z" fill={colors.emeraldGreen} stroke={colors.emeraldGreen} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M19 12V13C19 16.866 15.866 20 12 20C8.13401 20 5 16.866 5 13V12" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M12 20V23M12 23H15M12 23H9" stroke={colors.emeraldGreen} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-4 transition-all duration-300">
                   <ArrowRight className="w-5 h-5" style={{ color: colors.emeraldGreen }} />
                 </div>
               </div>
-
               <div className="mt-auto relative z-10">
                 <h3 className="text-xl sm:text-2xl font-bold mb-2">
                   <span className="text-black dark:text-white">Voice </span>
@@ -182,15 +246,14 @@ export default function HomePage() {
               </div>
             </div>
 
-            <Link 
+            <Link
               href="/chat"
               className="group cursor-pointer bg-gray-100 dark:bg-[#202020] border-2 border-transparent hover:border-gray-200 dark:hover:border-[#2a2a2a] rounded-3xl p-6 sm:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
             >
-              <div 
+              <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
                 style={{ background: `radial-gradient(circle at top right, ${colors.emeraldGreen}, transparent 60%)` }}
               />
-
               <div className="flex items-start justify-between mb-8 sm:mb-12 relative z-10">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white dark:bg-[#121212] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
                   <MessageSquare className="w-7 h-7 sm:w-8 sm:h-8" color={colors.emeraldGreen} strokeWidth={2} />
@@ -199,7 +262,6 @@ export default function HomePage() {
                   <ArrowRight className="w-5 h-5" style={{ color: colors.emeraldGreen }} />
                 </div>
               </div>
-
               <div className="mt-auto relative z-10">
                 <h3 className="text-xl sm:text-2xl font-bold mb-2">
                   <span className="text-black dark:text-white">Start </span>
@@ -222,47 +284,30 @@ export default function HomePage() {
 function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: string) => void }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handlePlay = () => {
-    // This is a placeholder. To make this work, we need a way to serve the audio files.
-    // For now, let's just log to the console.
-    console.log("Playing audio for", voice.id);
-    toast.info("Play functionality is not yet implemented for voice cards.");
-  };
-
   const handleDeleteClick = async () => {
     setIsDeleting(true);
     await onDelete(voice.id);
-    // No need to set isDeleting to false if the component unmounts after deletion
   };
-  
+
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col h-full bg-gray-100 dark:bg-[#202020] transition-all ease-in-out duration-300 hover:scale-105">
       <div className="p-4 sm:p-5 flex flex-col flex-1">
         <h3 className="text-base sm:text-lg font-semibold text-black dark:text-white mb-2">{voice.name}</h3>
         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Duration: <span style={{ color: colors.emeraldGreen }}>{(voice.duration ?? voice.duration_sec) != null ? (voice.duration ?? voice.duration_sec)!.toFixed(1) : 'N/A'}s</span>
+          Duration: <span style={{ color: colors.emeraldGreen }}>
+            {voice.duration != null ? voice.duration.toFixed(1) : 'N/A'}s
+          </span>
         </p>
-         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
           ID: <span className="font-mono">{voice.id}</span>
         </p>
-
         <div className="mt-auto space-y-3">
           <div className="flex gap-2">
-             <button
-              onClick={handlePlay}
+            <button
               className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer flex items-center justify-center"
-              style={{
-                borderColor: colors.emeraldGreen,
-                color: colors.emeraldGreen
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.emeraldGreen;
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = colors.emeraldGreen;
-              }}
+              style={{ borderColor: colors.emeraldGreen, color: colors.emeraldGreen }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = colors.emeraldGreen; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = colors.emeraldGreen; }}
             >
               <Play className="w-4 h-4 mr-1" />
               Play
@@ -272,18 +317,9 @@ function VoiceCard({ voice, onDelete }: { voice: Voice; onDelete: (voiceId: stri
                 <button
                   disabled={isDeleting}
                   className="flex-1 py-2 rounded-full text-sm font-medium border-2 transition-all ease-in-out duration-300 cursor-pointer disabled:opacity-50"
-                   style={{
-                    borderColor: colors.emeraldGreen,
-                    color: colors.emeraldGreen
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = colors.emeraldGreen;
-                    e.currentTarget.style.color = 'white';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = colors.emeraldGreen;
-                  }}
+                  style={{ borderColor: colors.emeraldGreen, color: colors.emeraldGreen }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = colors.emeraldGreen; e.currentTarget.style.color = 'white'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = colors.emeraldGreen; }}
                 >
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
