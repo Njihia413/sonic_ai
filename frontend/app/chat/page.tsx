@@ -31,6 +31,15 @@ interface ApiVoice {
   name: string;
 }
 
+interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  attachment?: { url: string; name: string } | null;
+  audioResponse?: { url: string; text: string } | null;
+  isTyping?: boolean;
+}
+
 // --- Audio Waveform Visualization Component ---
 function AudioWaveform({ audioUrl, isPlaying, onPlayPause }: {
   audioUrl: string;
@@ -140,12 +149,10 @@ function AudioWaveform({ audioUrl, isPlaying, onPlayPause }: {
           setCurrentTime(audio.currentTime);
         }
 
-        // Get live frequency data
         const analyser = analyserRef.current;
         if (analyser) {
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(dataArray);
-          // Downsample to 60 bars to match waveform
           const barCount = 60;
           const step = Math.max(1, Math.floor(dataArray.length / barCount));
           const bars: number[] = [];
@@ -192,7 +199,6 @@ function AudioWaveform({ audioUrl, isPlaying, onPlayPause }: {
     const hasLive = liveFrequency.length > 0;
 
     waveformData.forEach((staticVal, i) => {
-      // During playback, blend live frequency into bar height
       const liveVal = hasLive ? (liveFrequency[i] ?? 0) : 0;
       const barHeight = hasLive
         ? Math.max(3, (staticVal * 0.3 + liveVal * 0.7) * maxHeight)
@@ -270,7 +276,7 @@ export default function ChatPage() {
   const [message, setMessage] = useState('');
   const [audioFile, setAudioFile] = useState<{ url: string; name: string; id: string } | null>(null);
   const [selectedVoice, setSelectedVoice] = useState<string | undefined>(undefined);
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; attachment?: { url: string; name: string } | null; audioResponse?: { url: string; text: string } | null; isTyping?: boolean }>>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isFocused, setIsFocused] = useState(false);
   const [displayedText, setDisplayedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -282,7 +288,13 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messageIdRef = useRef(0);
   const fullText = "Hello, I'm Sonic AI. How may I help you today?";
+
+  const nextMessageId = () => {
+    messageIdRef.current += 1;
+    return messageIdRef.current;
+  };
 
   const [voices, setVoices] = useState<Array<{ value: string; label: string }>>([]);
 
@@ -301,7 +313,7 @@ export default function ChatPage() {
         if (data.allowed) {
           setAccess({ status: 'granted' })
         } else {
-          setAccess({ status: 'denied', message: data.message || 'Access denied' })
+          setAccess({ status: 'denied', message: data.error || data.message || 'Access denied' })
         }
       } catch {
         setAccess({ status: 'error', message: 'Could not verify access. Please try again.' })
@@ -315,14 +327,12 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
 
-  // Auto-scroll when new messages arrive
   useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom();
     }
   }, [messages, scrollToBottom]);
 
-  // Show/hide scroll-to-bottom button
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
@@ -346,39 +356,34 @@ export default function ChatPage() {
         }
         const data = await response.json();
         const fetchedVoices: VoiceOption[] = data.voices.map((v: ApiVoice) => ({ value: v.id, label: v.name }));
-        
+
         let allVoices = fetchedVoices;
 
-        // Check session storage for a newly created voice
         const newVoiceJSON = sessionStorage.getItem('selectedVoice');
         if (newVoiceJSON) {
           const newVoice = JSON.parse(newVoiceJSON);
           setAudioFile({ url: newVoice.audio_url, name: newVoice.name, id: newVoice.id });
-          
-          // Add the new voice to the list if it's not already there
+
           if (!fetchedVoices.some((v: VoiceOption) => v.value === newVoice.id)) {
             allVoices = [{ value: newVoice.id, label: newVoice.name }, ...fetchedVoices];
           }
           setSelectedVoice(newVoice.id);
-          sessionStorage.removeItem('selectedVoice'); // Clean up
+          sessionStorage.removeItem('selectedVoice');
         } else if (fetchedVoices.length > 0) {
           setSelectedVoice(fetchedVoices[0].value);
         }
 
         setVoices(allVoices);
-
       } catch (error) {
         console.error("Error setting voices:", error);
         toast.error("Could not load voices.");
       }
     };
 
-    // Only fetch voices once Argus has confirmed access
     if (access.status === 'granted') {
       fetchAndSetVoices();
     }
   }, [access.status]);
-
 
   useEffect(() => {
     if (messages.length === 0 && displayedText.length < fullText.length) {
@@ -391,13 +396,13 @@ export default function ChatPage() {
 
   const handleRemoveAudio = () => {
     if (audioFile) {
-      URL.revokeObjectURL(audioFile.url); // Clean up the object URL
+      URL.revokeObjectURL(audioFile.url);
     }
     setAudioFile(null);
   };
 
   const handleFileUpload = () => {
-     // This function is for manual attachment, which we are not focusing on now.
+    // Manual attachment — not used in this version
   };
 
   const handleAttachmentClick = () => {
@@ -407,22 +412,16 @@ export default function ChatPage() {
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
-    toast.success('Copied to clipboard', {
-      position: 'top-right',
-    });
+    toast.success('Copied to clipboard', { position: 'top-right' });
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   const handleUpvote = () => {
-    toast.success('Thank you for your feedback!', {
-      position: 'top-right',
-    });
+    toast.success('Thanks for the positive feedback!', { position: 'top-right' });
   };
 
   const handleDownvote = () => {
-    toast.success('Thank you for your feedback!', {
-      position: 'top-right',
-    });
+    toast.info('Thanks for the feedback — we\'ll use it to improve.', { position: 'top-right' });
   };
 
   const handleStop = () => {
@@ -435,6 +434,9 @@ export default function ChatPage() {
   };
 
   const handleSend = async () => {
+    // Prevent a second send while a generation request is active
+    if (isLoading || typingMessageIndex !== null) return;
+
     if (!message.trim() || !selectedVoice) {
       toast.error("Please enter a message and select a voice.");
       return;
@@ -445,35 +447,38 @@ export default function ChatPage() {
       return;
     }
 
-    const userMessage = {
-      role: 'user' as const,
+    const userMessage: ChatMessage = {
+      id: nextMessageId(),
+      role: 'user',
       content: message,
-      attachment: audioFile ? { url: audioFile.url, name: audioFile.name } : null
+      attachment: audioFile ? { url: audioFile.url, name: audioFile.name } : null,
     };
     setMessages(prev => [...prev, userMessage]);
-    
+
     const textToSynthesize = message;
     setMessage('');
     setAudioFile(null);
     setIsLoading(true);
 
-    const assistantMessageIndex = messages.length + 1;
-    const initialAssistantMessage = {
-      role: 'assistant' as const,
+    // Capture the stable ID now — immune to concurrent sends capturing the same index
+    const assistantMessageId = nextMessageId();
+    const initialAssistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
       content: '',
       isTyping: true,
       audioResponse: null,
-      attachment: null
+      attachment: null,
     };
     setMessages(prev => [...prev, initialAssistantMessage]);
-    setTypingMessageIndex(assistantMessageIndex);
+    setTypingMessageIndex(assistantMessageId);
 
     try {
       const formData = new FormData();
       formData.append('text', textToSynthesize);
       formData.append('voice_id', selectedVoice);
       formData.append('language', 'en');
-      
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/generate`, {
         method: 'POST',
         body: formData,
@@ -486,42 +491,33 @@ export default function ChatPage() {
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
-      
-      const responseText = `Here is the audio for the text you provided.`;
+      const responseText = 'Here is the audio for the text you provided.';
 
-       setMessages(prev => {
-        const updated = [...prev];
-        if (updated[assistantMessageIndex]) {
-          updated[assistantMessageIndex] = {
-            ...updated[assistantMessageIndex],
-            content: responseText,
-            audioResponse: { url: audioUrl, text: responseText },
-            isTyping: false,
-          };
-        }
-        return updated;
-      });
-
+      // Update by ID — safe regardless of how many messages were added concurrently
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantMessageId
+            ? { ...msg, content: responseText, audioResponse: { url: audioUrl, text: responseText }, isTyping: false }
+            : msg
+        )
+      );
     } catch (error) {
       console.error('Error generating audio:', error);
       const errorMessage = (error as Error).message || 'An unexpected error occurred during audio generation.';
       toast.error(errorMessage);
-       setMessages(prev => {
-        const updated = [...prev];
-        if (updated[assistantMessageIndex]) {
-          updated[assistantMessageIndex] = {
-            ...updated[assistantMessageIndex],
-            content: `Error: ${errorMessage}`,
-            isTyping: false,
-          };
-        }
-        return updated;
-      });
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantMessageId
+            ? { ...msg, content: `Error: ${errorMessage}`, isTyping: false }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
       setTypingMessageIndex(null);
     }
   };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -533,6 +529,11 @@ export default function ChatPage() {
   const isOverLimit = charCount > MAX_CHARS;
   const isNearLimit = charCount > MAX_CHARS * 0.8;
 
+  // Extracted to if/else to avoid nested ternary lint warning
+  let charCountColor = 'rgb(156, 163, 175)';
+  if (isOverLimit) charCountColor = '#EF4444';
+  else if (isNearLimit) charCountColor = '#F59E0B';
+
   const renderChatInput = () => (
     <div className="relative">
       <div
@@ -541,23 +542,21 @@ export default function ChatPage() {
         } ${
           isFocused ? '' : 'border-gray-400 dark:border-gray-600'
         }`}
-        style={{
-          borderColor: isFocused ? colors.emeraldGreen : undefined
-        }}
+        style={{ borderColor: isFocused ? colors.emeraldGreen : undefined }}
       >
         <div className="flex flex-col p-4 pr-24">
           {audioFile && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all self-start mb-2"
-              style={{
-                backgroundColor: `${colors.emeraldGreen}20`,
-                color: colors.emeraldGreen
-              }}
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all self-start mb-2"
+              style={{ backgroundColor: `${colors.emeraldGreen}20`, color: colors.emeraldGreen }}
             >
               <Paperclip className="w-3.5 h-3.5" />
               <span className="max-w-[150px] truncate">{audioFile.name}</span>
               <button
+                type="button"
                 onClick={handleRemoveAudio}
                 className="hover:opacity-70 transition-opacity"
+                aria-label="Remove attached file"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -582,6 +581,7 @@ export default function ChatPage() {
               className="hidden"
             />
             <button
+              type="button"
               onClick={handleAttachmentClick}
               className="shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Attach audio file"
@@ -603,17 +603,10 @@ export default function ChatPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Character Counter */}
             {charCount > 0 && (
               <span
                 className="text-xs font-medium transition-colors ml-1"
-                style={{
-                  color: isOverLimit
-                    ? '#EF4444'
-                    : isNearLimit
-                    ? '#F59E0B'
-                    : 'rgb(156, 163, 175)',
-                }}
+                style={{ color: charCountColor }}
               >
                 {charCount} / {MAX_CHARS}
               </span>
@@ -640,10 +633,7 @@ export default function ChatPage() {
             disabled={!isLoading && typingMessageIndex === null && (!message.trim() || isOverLimit) && !audioFile}
             size="icon"
             className="rounded-full h-[38px] w-[38px] shrink-0 transition-all duration-300 disabled:opacity-50"
-            style={{
-              backgroundColor: colors.emeraldGreen,
-              color: colors.white,
-            }}
+            style={{ backgroundColor: colors.emeraldGreen, color: colors.white }}
           >
             {(isLoading || typingMessageIndex !== null) ? <Square className="w-4 h-4" fill="currentColor" /> : <ArrowUp className="w-4 h-4" />}
           </Button>
@@ -682,6 +672,7 @@ export default function ChatPage() {
               {access.message}
             </p>
             <button
+              type="button"
               onClick={logout}
               className="w-full h-12 font-semibold text-sm rounded-full text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: colors.emeraldGreen }}
@@ -699,149 +690,147 @@ export default function ChatPage() {
       <div className="flex flex-col h-screen bg-white dark:bg-black">
         <Navbar />
 
-      {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-2xl space-y-6">
-            <div className="text-center space-y-2 mb-8">
-              <h1 className="text-4xl font-bold text-black dark:text-white">
-                {displayedText}<span className="animate-pulse">|</span>
-              </h1>
-            </div>
-            {renderChatInput()}
-          </div>
-        </div>
-      ) : (
-        <>
-          <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto relative">
-            <div className="w-full max-w-3xl mx-auto space-y-4">
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-                >
-                  {msg.attachment && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-2 rounded-full text-sm font-medium"
-                      style={{
-                        backgroundColor: `${colors.emeraldGreen}20`,
-                        color: colors.emeraldGreen
-                      }}
-                    >
-                      <Paperclip className="w-3.5 h-3.5" />
-                      <span className="max-w-[150px] truncate">{msg.attachment.name}</span>
-                    </div>
-                  )}
-                  <div className="max-w-[80%]">
-                    <div
-                      className={`rounded-2xl px-4 py-3 ${
-                        msg.role === 'assistant' && msg.audioResponse ? '' : 'inline-block'
-                      } ${
-                        msg.role === 'user'
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-gray-100 dark:bg-[#202020] text-black dark:text-white'
-                      }`}
-                      style={msg.role === 'user' ? { backgroundColor: colors.emeraldGreen } : {}}
-                    >
-                      {msg.role === 'assistant' && msg.audioResponse ? (
-                        <div className="space-y-3">
-                          <div className="text-sm">
-                            {msg.content}{msg.isTyping && <span className="animate-pulse ml-0.5">|</span>}
-                          </div>
-                          {!msg.isTyping && (
-                            <AudioWaveform
-                              audioUrl={msg.audioResponse.url}
-                              isPlaying={playingAudio === index}
-                              onPlayPause={() => {
-                                setPlayingAudio(prev => prev === index ? null : index);
-                              }}
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <div>{msg.content}</div>
-                      )}
-                    </div>
-                    {msg.role === 'assistant' && !msg.isTyping && (
-                      <div className="flex items-center gap-1 mt-2">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => handleCopy(msg.content, index)}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
-                            <p>Copy</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={handleUpvote}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <ThumbsUp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
-                            <p>Good response</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={handleDownvote}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <ThumbsDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
-                            <p>Bad response</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-start justify-start">
-                  <BounceLoader
-                    color={colors.emeraldGreen}
-                    loading={isLoading}
-                    size={40}
-                    aria-label="Loading Spinner"
-                    data-testid="loader"
-                  />
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Scroll to Bottom Button */}
-            {showScrollButton && (
-              <button
-                onClick={() => scrollToBottom()}
-                className="fixed bottom-28 right-8 z-50 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-                style={{
-                  backgroundColor: colors.emeraldGreen,
-                  color: colors.white,
-                }}
-              >
-                <ChevronDown className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-
-          <div className="bg-white dark:bg-black">
-            <div className="max-w-3xl mx-auto p-4">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="w-full max-w-2xl space-y-6">
+              <div className="text-center space-y-2 mb-8">
+                <h1 className="text-4xl font-bold text-black dark:text-white">
+                  {displayedText}<span className="animate-pulse">|</span>
+                </h1>
+              </div>
               {renderChatInput()}
             </div>
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto relative">
+              <div className="w-full max-w-3xl mx-auto space-y-4">
+                {messages.map((msg, index) => (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                  >
+                    {msg.attachment && (
+                      <div
+                        className="inline-flex items-center gap-2 px-3 py-1.5 mb-2 rounded-full text-sm font-medium"
+                        style={{ backgroundColor: `${colors.emeraldGreen}20`, color: colors.emeraldGreen }}
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span className="max-w-[150px] truncate">{msg.attachment.name}</span>
+                      </div>
+                    )}
+                    <div className="max-w-[80%]">
+                      <div
+                        className={`rounded-2xl px-4 py-3 ${
+                          msg.role === 'assistant' && msg.audioResponse ? '' : 'inline-block'
+                        } ${
+                          msg.role === 'user'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-gray-100 dark:bg-[#202020] text-black dark:text-white'
+                        }`}
+                        style={msg.role === 'user' ? { backgroundColor: colors.emeraldGreen } : {}}
+                      >
+                        {msg.role === 'assistant' && msg.audioResponse ? (
+                          <div className="space-y-3">
+                            <div className="text-sm">
+                              {msg.content}{msg.isTyping && <span className="animate-pulse ml-0.5">|</span>}
+                            </div>
+                            {!msg.isTyping && (
+                              <AudioWaveform
+                                audioUrl={msg.audioResponse.url}
+                                isPlaying={playingAudio === index}
+                                onPlayPause={() => {
+                                  setPlayingAudio(prev => prev === index ? null : index);
+                                }}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div>{msg.content}</div>
+                        )}
+                      </div>
+                      {msg.role === 'assistant' && !msg.isTyping && (
+                        <div className="flex items-center gap-1 mt-2">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(msg.content, index)}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                              <p>Copy</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={handleUpvote}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <ThumbsUp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                              <p>Good response</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={handleDownvote}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <ThumbsDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent style={{ backgroundColor: colors.emeraldGreen, color: colors.white, border: 'none' }}>
+                              <p>Bad response</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex items-start justify-start">
+                    <BounceLoader
+                      color={colors.emeraldGreen}
+                      loading={isLoading}
+                      size={40}
+                      aria-label="Loading Spinner"
+                      data-testid="loader"
+                    />
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {showScrollButton && (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom()}
+                  className="fixed bottom-28 right-8 z-50 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+                  style={{ backgroundColor: colors.emeraldGreen, color: colors.white }}
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-black">
+              <div className="max-w-3xl mx-auto p-4">
+                {renderChatInput()}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </TooltipProvider>
   );
