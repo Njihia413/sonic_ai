@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { colors } from '@/lib/colors';
+import { logout } from '@/lib/auth';
 
 export function Navbar() {
   const handleLogout = () => {
-    window.location.href = '/';
+    logout();
   };
 
   return (
@@ -33,7 +34,7 @@ export function Navbar() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="relative h-9 w-9 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all hover:opacity-80"
+                <button type="button" className="relative h-9 w-9 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all hover:opacity-80"
                   style={{
                     focusRing: colors.emeraldGreen,
                     '--tw-ring-color': colors.emeraldGreen
